@@ -156,6 +156,7 @@ const Index = () => {
           CATEGORIES.map((c, i) => (
             <MediaRow
               key={c.key}
+              id={`section-${c.key}`}
               title={c.label}
               items={trendingQueries[i].data || []}
               loading={trendingQueries[i].isLoading}
