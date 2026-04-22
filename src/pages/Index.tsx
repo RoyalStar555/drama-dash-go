@@ -74,20 +74,42 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <h1 className="text-2xl font-extrabold tracking-tight">
-            <span className="text-primary">Story</span>Hub
-          </h1>
-          <div className="relative w-full sm:max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search movies, dramas, anime, manga, books…"
-              className="pl-9"
-              aria-label="Search StoryHub"
-            />
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-8">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="self-start text-2xl font-extrabold tracking-tight transition-opacity hover:opacity-80"
+              aria-label="StoryHub home"
+            >
+              <span className="text-primary">Story</span>Hub
+            </button>
+            <div className="relative w-full sm:max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search movies, dramas, anime, manga, books…"
+                className="pl-9"
+                aria-label="Search StoryHub"
+              />
+            </div>
           </div>
+          <nav aria-label="Categories">
+            <ul className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {CATEGORIES.map((c) => (
+                <li key={c.key}>
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection(c.key)}
+                    className="whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    {c.navLabel}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
       </header>
 
