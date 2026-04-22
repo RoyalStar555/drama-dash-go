@@ -1,16 +1,42 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { Hero } from "@/components/Hero";
+import { MediaGrid } from "@/components/MediaGrid";
+import { DetailModal } from "@/components/DetailModal";
+import { useCategorySearch } from "@/hooks/useSearch";
+import { CATEGORY_META } from "@/lib/types";
+import type { MediaItem, MediaCategory } from "@/lib/types";
+import { Link } from "react-router-dom";
 
-// IMPORTANT: Fully REPLACE this with your own code
-const PlaceholderIndex = () => {
-  // PLACEHOLDER: Replace this entire return statement with the user's app.
-  // The inline background color is intentionally not part of the design system.
+function TrendingRow({ category, onSelect }: { category: MediaCategory; onSelect: (i: MediaItem) => void }) {
+  const { data, isLoading } = useCategorySearch(category, "");
+  const meta = CATEGORY_META[category];
   return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
+    <section className="container py-8">
+      <div className="mb-4 flex items-end justify-between">
+        <h2 className="font-display text-2xl font-bold tracking-tight">
+          Trending in <span className="text-gradient">{meta.label}</span>
+        </h2>
+        <Link to={meta.path} className="text-sm font-medium text-muted-foreground hover:text-foreground">
+          See all →
+        </Link>
+      </div>
+      <MediaGrid items={data?.slice(0, 12)} isLoading={isLoading} onSelect={onSelect} />
+    </section>
+  );
+}
+
+const Index = () => {
+  const [selected, setSelected] = useState<MediaItem | null>(null);
+  return (
+    <>
+      <Hero />
+      <TrendingRow category="anime" onSelect={setSelected} />
+      <TrendingRow category="movies" onSelect={setSelected} />
+      <TrendingRow category="manga" onSelect={setSelected} />
+      <TrendingRow category="books" onSelect={setSelected} />
+      <DetailModal item={selected} onClose={() => setSelected(null)} />
+    </>
   );
 };
-
-const Index = PlaceholderIndex;
 
 export default Index;
