@@ -11,13 +11,20 @@ import {
   MediaItem,
 } from "@/lib/api";
 
-const CATEGORIES: { key: MediaCategory; label: string }[] = [
-  { key: "movie", label: "Trending Movies" },
-  { key: "drama", label: "Popular Dramas" },
-  { key: "anime", label: "Top Anime" },
-  { key: "manga", label: "Top Manga" },
-  { key: "book", label: "Bestselling Books" },
+const CATEGORIES: { key: MediaCategory; label: string; navLabel: string }[] = [
+  { key: "movie", label: "Trending Movies", navLabel: "Movies" },
+  { key: "drama", label: "Popular Dramas", navLabel: "Dramas" },
+  { key: "anime", label: "Top Anime", navLabel: "Anime" },
+  { key: "manga", label: "Top Manga", navLabel: "Manga" },
+  { key: "book", label: "Bestselling Books", navLabel: "Books" },
 ];
+
+const scrollToSection = (key: string) => {
+  const el = document.getElementById(`section-${key}`);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
 const Index = () => {
   const [query, setQuery] = useState("");
