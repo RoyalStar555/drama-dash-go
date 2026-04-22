@@ -7,11 +7,12 @@ interface Props {
   items: MediaItem[];
   loading?: boolean;
   onSelect: (item: MediaItem) => void;
+  id?: string;
 }
 
-export const MediaRow = ({ title, items, loading, onSelect }: Props) => {
+export const MediaRow = ({ title, items, loading, onSelect, id }: Props) => {
   return (
-    <section className="space-y-3">
+    <section id={id} className="scroll-mt-32 space-y-3">
       <h2 className="px-4 text-xl font-bold text-foreground sm:px-8 md:text-2xl">
         {title}
       </h2>
