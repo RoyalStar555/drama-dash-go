@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { MediaRow } from "@/components/MediaRow";
 import { DetailModal } from "@/components/DetailModal";
+import { Hero } from "@/components/Hero";
 import {
   fetchTrending,
   searchAll,
@@ -115,17 +116,12 @@ const Index = () => {
 
       <main className="mx-auto max-w-7xl space-y-8 py-8">
         {!isSearching && (
-          <div className="px-4 sm:px-8">
-            <div className="rounded-xl bg-gradient-to-r from-primary/30 via-primary/10 to-transparent p-6 sm:p-10">
-              <h2 className="text-3xl font-bold sm:text-4xl">
-                Discover stories worth watching, reading & loving.
-              </h2>
-              <p className="mt-2 max-w-xl text-muted-foreground">
-                Movies, K-dramas, anime, manga, and books — all in one place.
-                Click any title to watch the trailer.
-              </p>
-            </div>
-          </div>
+          <Hero
+            item={trendingQueries[0].data?.[0] || null}
+            loading={trendingQueries[0].isLoading}
+            onPlay={setSelected}
+            onMore={setSelected}
+          />
         )}
 
         {isSearching ? (
