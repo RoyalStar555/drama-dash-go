@@ -118,28 +118,55 @@ const Watch = () => {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8">
-        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        <div
+          className={cn(
+            "grid gap-6",
+            theater ? "lg:grid-cols-1" : "lg:grid-cols-[1fr_340px]"
+          )}
+        >
           {/* LEFT: Player + meta */}
           <div className="space-y-5">
-            <div className="overflow-hidden rounded-xl border border-border bg-black shadow-2xl">
-              <div className="relative aspect-video w-full">
-                {trailerLoading ? (
-                  <Skeleton className="absolute inset-0 rounded-none" />
-                ) : trailerKey ? (
-                  <iframe
-                    key={`${server}-${trailerKey}-${activeEpisode}`}
-                    src={`https://www.youtube.com/embed/${trailerKey}?autoplay=0&modestbranding=1&rel=0`}
-                    title={item?.title || "Watch"}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                    className="absolute inset-0 h-full w-full"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <Play className="h-10 w-10 opacity-50" />
-                    <p className="text-sm">No stream available for this title.</p>
-                  </div>
-                )}
+            {/* Sticky on mobile so player stays pinned while episodes scroll */}
+            <div className="sticky top-[57px] z-20 -mx-4 sm:mx-0 lg:static">
+              <div className="overflow-hidden border-y border-border bg-black shadow-2xl sm:rounded-xl sm:border">
+                <div className="relative aspect-video w-full">
+                  {trailerLoading ? (
+                    <Skeleton className="absolute inset-0 rounded-none" />
+                  ) : trailerKey ? (
+                    <iframe
+                      key={`${server}-${trailerKey}-${activeEpisode}`}
+                      src={`https://www.youtube.com/embed/${trailerKey}?autoplay=0&modestbranding=1&rel=0`}
+                      title={item?.title || "Watch"}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="absolute inset-0 h-full w-full"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <Play className="h-10 w-10 opacity-50" />
+                      <p className="text-sm">No stream available for this title.</p>
+                    </div>
+                  )}
+                </div>
+                {/* Theater Mode button (desktop only — hidden on small) */}
+                <div className="hidden items-center justify-end gap-2 border-t border-border bg-card/80 px-3 py-2 lg:flex">
+                  <button
+                    type="button"
+                    onClick={() => setTheater((t) => !t)}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-secondary/80 px-3 py-1.5 text-xs font-semibold text-secondary-foreground transition-colors hover:bg-secondary"
+                    aria-pressed={theater}
+                  >
+                    {theater ? (
+                      <>
+                        <Minimize2 className="h-3.5 w-3.5" /> Exit Theater Mode
+                      </>
+                    ) : (
+                      <>
+                        <Maximize2 className="h-3.5 w-3.5" /> Theater Mode
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 
