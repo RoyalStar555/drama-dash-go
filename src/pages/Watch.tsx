@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Download, Server, Play } from "lucide-react";
+import { ArrowLeft, Download, Server, Play, Maximize2, Minimize2 } from "lucide-react";
 import { fetchRelated, fetchTrailerKey, MediaItem, PLACEHOLDER } from "@/lib/api";
 import { MediaRow } from "@/components/MediaRow";
 import { Button } from "@/components/ui/button";
