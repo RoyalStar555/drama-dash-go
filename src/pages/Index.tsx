@@ -129,11 +129,11 @@ const Index = () => {
 
       <main className="mx-auto max-w-7xl space-y-8 py-8">
         {!isSearching && (
-          <Hero
-            item={trendingQueries[0].data?.[0] || null}
-            loading={trendingQueries[0].isLoading}
-            onPlay={setSelected}
-            onMore={setSelected}
+          <TrendingSlider
+            items={trendingQueries[1].data || trendingQueries[0].data || []}
+            loading={trendingQueries[1].isLoading}
+            onPlay={handleSelect}
+            onMore={handleSelect}
           />
         )}
 
@@ -150,7 +150,7 @@ const Index = () => {
                   key={c.key}
                   title={c.label.replace(/^(Trending |Popular |Top |Bestselling )/, "")}
                   items={grouped[c.key]}
-                  onSelect={setSelected}
+                  onSelect={handleSelect}
                 />
               ) : null
             )}
@@ -169,7 +169,7 @@ const Index = () => {
               title={c.label}
               items={trendingQueries[i].data || []}
               loading={trendingQueries[i].isLoading}
-              onSelect={setSelected}
+              onSelect={handleSelect}
             />
           ))
         )}
