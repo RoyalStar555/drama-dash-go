@@ -31,8 +31,10 @@ export const MediaCard = ({ item, onClick }: Props) => {
           }}
           className="h-full w-full object-cover transition-opacity"
         />
-        <div className="absolute inset-0 flex items-center justify-center bg-background/70 opacity-0 transition-opacity group-hover:opacity-100">
-          <Play className="h-10 w-10 text-primary" fill="currentColor" />
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/95 shadow-2xl ring-2 ring-primary-foreground/20 transition-transform duration-300 group-hover:scale-110">
+            <Play className="h-6 w-6 text-primary-foreground" fill="currentColor" />
+          </span>
         </div>
         <span className="absolute left-2 top-2 rounded bg-primary/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">
           {categoryLabels[item.category]}

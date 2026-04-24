@@ -33,7 +33,7 @@ export const DetailModal = ({ item, onClose }: Props) => {
 
   return (
     <Dialog open={!!item} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl border-border bg-card p-0 text-card-foreground">
+      <DialogContent className="max-w-4xl glass-strong border-0 p-0 text-foreground">
         {item && (
           <div className="overflow-hidden">
             <div className="relative aspect-video w-full bg-black">
