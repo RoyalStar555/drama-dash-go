@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { MediaRow } from "@/components/MediaRow";
 import { DetailModal } from "@/components/DetailModal";
-import { Hero } from "@/components/Hero";
+import { TrendingSlider } from "@/components/TrendingSlider";
+import { cacheWatchItem } from "@/pages/Watch";
 import {
   fetchTrending,
   searchAll,
@@ -28,9 +30,20 @@ const scrollToSection = (key: string) => {
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
 const Index = () => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [selected, setSelected] = useState<MediaItem | null>(null);
+
+  // Drama → Watch page directly. Other categories → modal.
+  const handleSelect = (item: MediaItem) => {
+    if (item.category === "drama") {
+      cacheWatchItem(item);
+      navigate(`/watch/${encodeURIComponent(item.id)}`);
+      return;
+    }
+    setSelected(item);
+  };
 
   // Restore search on back-nav
   useEffect(() => {
@@ -116,11 +129,11 @@ const Index = () => {
 
       <main className="mx-auto max-w-7xl space-y-8 py-8">
         {!isSearching && (
-          <Hero
-            item={trendingQueries[0].data?.[0] || null}
-            loading={trendingQueries[0].isLoading}
-            onPlay={setSelected}
-            onMore={setSelected}
+          <TrendingSlider
+            items={trendingQueries[1].data || trendingQueries[0].data || []}
+            loading={trendingQueries[1].isLoading}
+            onPlay={handleSelect}
+            onMore={handleSelect}
           />
         )}
 
@@ -137,7 +150,7 @@ const Index = () => {
                   key={c.key}
                   title={c.label.replace(/^(Trending |Popular |Top |Bestselling )/, "")}
                   items={grouped[c.key]}
-                  onSelect={setSelected}
+                  onSelect={handleSelect}
                 />
               ) : null
             )}
@@ -156,7 +169,7 @@ const Index = () => {
               title={c.label}
               items={trendingQueries[i].data || []}
               loading={trendingQueries[i].isLoading}
-              onSelect={setSelected}
+              onSelect={handleSelect}
             />
           ))
         )}

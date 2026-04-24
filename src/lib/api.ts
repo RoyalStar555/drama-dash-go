@@ -8,6 +8,7 @@ export interface MediaItem {
   category: MediaCategory;
   title: string;
   poster: string;
+  backdrop?: string;
   year?: string;
   overview?: string;
   rating?: number;
@@ -29,6 +30,7 @@ const CORS_PROXY = "https://corsproxy.io/?";
 const proxied = (url: string) => `${CORS_PROXY}${encodeURIComponent(url)}`;
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
+const TMDB_BACKDROP = "https://image.tmdb.org/t/p/w1280";
 export const PLACEHOLDER =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
@@ -59,6 +61,7 @@ interface TmdbResult {
     title?: string;
     name?: string;
     poster_path?: string | null;
+    backdrop_path?: string | null;
     release_date?: string;
     first_air_date?: string;
     overview?: string;
@@ -76,6 +79,7 @@ function mapTmdb(
     category,
     title: r.title || r.name || "Untitled",
     poster: r.poster_path ? `${TMDB_IMG}${r.poster_path}` : PLACEHOLDER,
+    backdrop: r.backdrop_path ? `${TMDB_BACKDROP}${r.backdrop_path}` : undefined,
     year: (r.release_date || r.first_air_date || "").slice(0, 4),
     overview: r.overview,
     rating: r.vote_average,
@@ -220,4 +224,19 @@ export async function fetchTrailerKey(item: MediaItem): Promise<string | null> {
     return item.trailerQuery;
   }
   return null;
+}
+
+// ---- Related (TMDB recommendations) ----------------------------------------
+export async function fetchRelated(item: MediaItem): Promise<MediaItem[]> {
+  if (item.tmdbId && item.tmdbType) {
+    const r = await tmdb<TmdbResult>(
+      `/${item.tmdbType}/${item.tmdbId}/recommendations`
+    );
+    return mapTmdb(
+      r?.results,
+      item.tmdbType,
+      item.tmdbType === "tv" ? "drama" : "movie"
+    );
+  }
+  return [];
 }

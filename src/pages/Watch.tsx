@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, Server, Play } from "lucide-react";
-import { fetchTrailerKey, MediaItem, PLACEHOLDER } from "@/lib/api";
+import { fetchRelated, fetchTrailerKey, MediaItem, PLACEHOLDER } from "@/lib/api";
+import { MediaRow } from "@/components/MediaRow";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -55,6 +56,20 @@ const Watch = () => {
     enabled: !!item,
     staleTime: 1000 * 60 * 30,
   });
+
+  const { data: related = [], isLoading: relatedLoading } = useQuery({
+    queryKey: ["related", item?.id],
+    queryFn: () => (item ? fetchRelated(item) : Promise.resolve([])),
+    enabled: !!item,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const handleRelatedSelect = (next: MediaItem) => {
+    cacheWatchItem(next);
+    setActiveEpisode(1);
+    navigate(`/watch/${encodeURIComponent(next.id)}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Generate a dummy episode list (12 eps) — UI structure for the user request
   const episodes = useMemo(
@@ -248,6 +263,15 @@ const Watch = () => {
               </ul>
             </ScrollArea>
           </aside>
+        </div>
+
+        <div className="mt-10">
+          <MediaRow
+            title="Related Videos"
+            items={related}
+            loading={relatedLoading}
+            onSelect={handleRelatedSelect}
+          />
         </div>
       </main>
     </div>
