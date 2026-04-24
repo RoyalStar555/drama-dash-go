@@ -89,25 +89,31 @@ const Watch = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-8">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate(-1)}
             className="gap-2"
           >
-            <ArrowLeft className="h-4 w-4" /> Back
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Back</span>
           </Button>
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="text-xl font-extrabold tracking-tight"
-            aria-label="StoryHub home"
+            className="flex items-center gap-2 text-xl font-extrabold tracking-tight transition-opacity hover:opacity-80 sm:text-2xl"
+            aria-label="Drama Dash Go home"
           >
-            <span className="text-primary">Story</span>Hub
+            <span className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground shadow-md">
+              <Play className="h-4 w-4" fill="currentColor" />
+            </span>
+            <span>
+              <span className="text-primary">Drama</span>Dash
+            </span>
           </button>
-          <span className="w-16" />
+          <span className="w-10 sm:w-16" />
         </div>
       </header>
 
