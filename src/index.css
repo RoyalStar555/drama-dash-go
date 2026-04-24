@@ -103,3 +103,24 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .glass {
+    background: hsl(var(--card) / 0.55);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid hsl(var(--foreground) / 0.08);
+    box-shadow: 0 20px 60px -20px hsl(0 0% 0% / 0.6);
+  }
+  .glass-strong {
+    background: hsl(var(--background) / 0.7);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid hsl(var(--foreground) / 0.1);
+  }
+  .hero-vignette {
+    background:
+      linear-gradient(180deg, hsl(var(--background) / 0) 0%, hsl(var(--background) / 0.55) 60%, hsl(var(--background)) 100%),
+      linear-gradient(90deg, hsl(var(--background)) 0%, hsl(var(--background) / 0.4) 45%, hsl(var(--background) / 0) 80%);
+  }
+}
