@@ -238,10 +238,15 @@ const Watch = () => {
             </section>
           </div>
 
-          {/* RIGHT: Episodes */}
+          {/* RIGHT: Episodes (sidebar; collapses below in theater mode or on small screens) */}
           <aside
             aria-label="Episodes"
-            className="rounded-xl border border-border bg-card/60 p-3 backdrop-blur lg:sticky lg:top-20 lg:self-start"
+            className={cn(
+              "rounded-xl border border-border bg-card/60 p-3 backdrop-blur",
+              theater
+                ? "lg:col-span-1"
+                : "lg:sticky lg:top-20 lg:self-start"
+            )}
           >
             <div className="mb-2 flex items-center justify-between px-1">
               <h2 className="text-sm font-semibold">Episodes</h2>
@@ -249,48 +254,32 @@ const Watch = () => {
                 {episodes.length} total
               </span>
             </div>
-            <ScrollArea className="h-[420px] lg:h-[560px] pr-2">
-              <ul className="space-y-2">
+            <ScrollArea
+              className={cn(
+                "pr-2",
+                theater ? "h-[320px]" : "h-[420px] lg:h-[560px]"
+              )}
+            >
+              <ul
+                className={cn(
+                  "gap-2",
+                  theater
+                    ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4"
+                    : "flex flex-col"
+                )}
+              >
                 {episodes.map((ep) => {
                   const active = ep.number === activeEpisode;
                   return (
                     <li key={ep.number}>
-                      <button
-                        type="button"
+                      <EpisodeCard
+                        number={ep.number}
+                        title={ep.title}
+                        runtime={ep.runtime}
+                        active={active}
+                        poster={item?.poster}
                         onClick={() => setActiveEpisode(ep.number)}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-all",
-                          active
-                            ? "border-primary bg-primary/15"
-                            : "border-border bg-background/40 hover:border-primary/50"
-                        )}
-                      >
-                        <div className="relative h-14 w-24 flex-shrink-0 overflow-hidden rounded-md bg-muted">
-                          <img
-                            src={item?.poster || PLACEHOLDER}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).src =
-                                PLACEHOLDER;
-                            }}
-                          />
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/40">
-                            <Play
-                              className="h-4 w-4 text-white"
-                              fill="currentColor"
-                            />
-                          </span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {ep.number}. {ep.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {ep.runtime}
-                          </p>
-                        </div>
-                      </button>
+                      />
                     </li>
                   );
                 })}
