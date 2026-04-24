@@ -34,6 +34,7 @@ const Watch = () => {
   const [item, setItem] = useState<MediaItem | null>(() => loadCachedItem(id));
   const [server, setServer] = useState(SERVERS[0].id);
   const [activeEpisode, setActiveEpisode] = useState(1);
+  const [theater, setTheater] = useState(false);
 
   // Fallback: minimal item from URL params if no cache (deep link)
   useEffect(() => {
