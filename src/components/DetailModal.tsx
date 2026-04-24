@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { MediaItem, fetchTrailerKey, PLACEHOLDER } from "@/lib/api";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cacheWatchItem } from "@/pages/Watch";
 
 interface Props {
   item: MediaItem | null;
@@ -9,6 +12,7 @@ interface Props {
 }
 
 export const DetailModal = ({ item, onClose }: Props) => {
+  const navigate = useNavigate();
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -85,6 +89,21 @@ export const DetailModal = ({ item, onClose }: Props) => {
               <p className="text-sm leading-relaxed text-foreground/90">
                 {item.overview || "No description available."}
               </p>
+              {item.category === "drama" && (
+                <div className="pt-2">
+                  <Button
+                    size="lg"
+                    className="gap-2"
+                    onClick={() => {
+                      cacheWatchItem(item);
+                      onClose();
+                      navigate(`/watch/${encodeURIComponent(item.id)}`);
+                    }}
+                  >
+                    <Play className="h-4 w-4" fill="currentColor" /> Watch Now
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}
