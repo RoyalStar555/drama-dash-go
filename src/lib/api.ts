@@ -225,3 +225,18 @@ export async function fetchTrailerKey(item: MediaItem): Promise<string | null> {
   }
   return null;
 }
+
+// ---- Related (TMDB recommendations) ----------------------------------------
+export async function fetchRelated(item: MediaItem): Promise<MediaItem[]> {
+  if (item.tmdbId && item.tmdbType) {
+    const r = await tmdb<TmdbResult>(
+      `/${item.tmdbType}/${item.tmdbId}/recommendations`
+    );
+    return mapTmdb(
+      r?.results,
+      item.tmdbType,
+      item.tmdbType === "tv" ? "drama" : "movie"
+    );
+  }
+  return [];
+}
