@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { MediaItem, PLACEHOLDER } from "@/lib/api";
 import { Play } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface Props {
   item: MediaItem;
@@ -15,6 +18,9 @@ const categoryLabels: Record<string, string> = {
 };
 
 export const MediaCard = ({ item, onClick }: Props) => {
+  const [loaded, setLoaded] = useState(false);
+  const [errored, setErrored] = useState(false);
+
   return (
     <button
       onClick={() => onClick(item)}
@@ -22,14 +28,22 @@ export const MediaCard = ({ item, onClick }: Props) => {
       aria-label={`Open ${item.title}`}
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted">
+        {!loaded && (
+          <Skeleton className="absolute inset-0 rounded-none" />
+        )}
         <img
-          src={item.poster}
+          src={errored ? PLACEHOLDER : item.poster}
           alt={item.title}
           loading="lazy"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+          onLoad={() => setLoaded(true)}
+          onError={() => {
+            setErrored(true);
+            setLoaded(true);
           }}
-          className="h-full w-full object-cover transition-opacity"
+          className={cn(
+            "h-full w-full object-cover transition-opacity duration-500",
+            loaded ? "opacity-100" : "opacity-0"
+          )}
         />
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-background/90 via-background/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/95 shadow-2xl ring-2 ring-primary-foreground/20 transition-transform duration-300 group-hover:scale-110">
