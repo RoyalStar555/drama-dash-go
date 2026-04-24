@@ -57,6 +57,20 @@ const Watch = () => {
     staleTime: 1000 * 60 * 30,
   });
 
+  const { data: related = [], isLoading: relatedLoading } = useQuery({
+    queryKey: ["related", item?.id],
+    queryFn: () => (item ? fetchRelated(item) : Promise.resolve([])),
+    enabled: !!item,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const handleRelatedSelect = (next: MediaItem) => {
+    cacheWatchItem(next);
+    setActiveEpisode(1);
+    navigate(`/watch/${encodeURIComponent(next.id)}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // Generate a dummy episode list (12 eps) — UI structure for the user request
   const episodes = useMemo(
     () =>
