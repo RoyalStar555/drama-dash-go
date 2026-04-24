@@ -264,6 +264,15 @@ const Watch = () => {
             </ScrollArea>
           </aside>
         </div>
+
+        <div className="mt-10">
+          <MediaRow
+            title="Related Videos"
+            items={related}
+            loading={relatedLoading}
+            onSelect={handleRelatedSelect}
+          />
+        </div>
       </main>
     </div>
   );
