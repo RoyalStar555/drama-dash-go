@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MediaRow } from "@/components/MediaRow";
-import { DetailModal } from "@/components/DetailModal";
 import { TrendingSlider } from "@/components/TrendingSlider";
 import { SearchPalette } from "@/components/SearchPalette";
+import { ContinueWatchingRow } from "@/components/ContinueWatchingRow";
 import { FilterSidebar, applyFilters, DEFAULT_FILTERS, Filters } from "@/components/FilterSidebar";
 import { cacheWatchItem } from "@/pages/Watch";
 import {
