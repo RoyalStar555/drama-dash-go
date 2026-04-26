@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, Server, Play, Maximize2, Minimize2 } from "lucide-react";
 import { fetchRelated, fetchTrailerKey, MediaItem, PLACEHOLDER } from "@/lib/api";
 import { MediaRow } from "@/components/MediaRow";
+import { MyListMenu } from "@/components/MyListMenu";
+import { useMyList } from "@/hooks/useMyList";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -32,6 +34,7 @@ interface EpisodeCardProps {
   title: string;
   runtime: string;
   active: boolean;
+  watched?: boolean;
   poster?: string;
   onClick: () => void;
 }
@@ -41,6 +44,7 @@ const EpisodeCard = ({
   title,
   runtime,
   active,
+  watched,
   poster,
   onClick,
 }: EpisodeCardProps) => {
@@ -54,7 +58,9 @@ const EpisodeCard = ({
         "flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-all",
         active
           ? "border-primary bg-primary/15"
-          : "border-border bg-background/40 hover:border-primary/50"
+          : watched
+            ? "border-primary/30 bg-primary/5 hover:border-primary/60"
+            : "border-border bg-background/40 hover:border-primary/50"
       )}
     >
       <div className="relative h-14 w-24 flex-shrink-0 overflow-hidden rounded-md bg-muted">
@@ -81,7 +87,10 @@ const EpisodeCard = ({
         <p className="truncate text-sm font-medium">
           {number}. {title}
         </p>
-        <p className="text-xs text-muted-foreground">{runtime}</p>
+        <p className="text-xs text-muted-foreground">
+          {runtime}
+          {watched && <span className="ml-1.5 text-primary">· watched</span>}
+        </p>
       </div>
     </button>
   );
@@ -143,6 +152,21 @@ const Watch = () => {
       })),
     []
   );
+
+  const { markEpisodeWatched, reportTotal, get } = useMyList();
+  const watchedEntry = item ? get(item.id) : undefined;
+  const watchedSet = new Set(watchedEntry?.watched || []);
+
+  // Tell the list how many episodes exist so it can detect "new episode" later
+  useEffect(() => {
+    if (item) reportTotal(item, episodes.length);
+  }, [item, episodes.length, reportTotal]);
+
+  // Mark active episode as watched when the user selects one
+  useEffect(() => {
+    if (item) markEpisodeWatched(item, activeEpisode, episodes.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEpisode, item?.id]);
 
   const downloadHref = trailerKey
     ? `https://www.youtube.com/watch?v=${trailerKey}`
@@ -276,16 +300,19 @@ const Watch = () => {
                     {` · Episode ${activeEpisode}`}
                   </p>
                 </div>
-                <Button asChild size="lg" className="gap-2">
-                  <a
-                    href={downloadHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download
-                  >
-                    <Download className="h-4 w-4" /> Download
-                  </a>
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {item && <MyListMenu item={item} />}
+                  <Button asChild size="lg" variant="secondary" className="gap-2">
+                    <a
+                      href={downloadHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                    >
+                      <Download className="h-4 w-4" /> Download
+                    </a>
+                  </Button>
+                </div>
               </div>
               {item?.overview ? (
                 <p className="max-w-3xl text-sm leading-relaxed text-foreground/85 sm:text-base">
@@ -338,6 +365,7 @@ const Watch = () => {
                         title={ep.title}
                         runtime={ep.runtime}
                         active={active}
+                        watched={watchedSet.has(ep.number)}
                         poster={item?.poster}
                         onClick={() => setActiveEpisode(ep.number)}
                       />
