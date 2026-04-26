@@ -34,6 +34,7 @@ interface EpisodeCardProps {
   title: string;
   runtime: string;
   active: boolean;
+  watched?: boolean;
   poster?: string;
   onClick: () => void;
 }
@@ -43,6 +44,7 @@ const EpisodeCard = ({
   title,
   runtime,
   active,
+  watched,
   poster,
   onClick,
 }: EpisodeCardProps) => {
@@ -56,7 +58,9 @@ const EpisodeCard = ({
         "flex w-full items-center gap-3 rounded-lg border p-2 text-left transition-all",
         active
           ? "border-primary bg-primary/15"
-          : "border-border bg-background/40 hover:border-primary/50"
+          : watched
+            ? "border-primary/30 bg-primary/5 hover:border-primary/60"
+            : "border-border bg-background/40 hover:border-primary/50"
       )}
     >
       <div className="relative h-14 w-24 flex-shrink-0 overflow-hidden rounded-md bg-muted">
@@ -83,7 +87,10 @@ const EpisodeCard = ({
         <p className="truncate text-sm font-medium">
           {number}. {title}
         </p>
-        <p className="text-xs text-muted-foreground">{runtime}</p>
+        <p className="text-xs text-muted-foreground">
+          {runtime}
+          {watched && <span className="ml-1.5 text-primary">· watched</span>}
+        </p>
       </div>
     </button>
   );
@@ -358,6 +365,7 @@ const Watch = () => {
                         title={ep.title}
                         runtime={ep.runtime}
                         active={active}
+                        watched={watchedSet.has(ep.number)}
                         poster={item?.poster}
                         onClick={() => setActiveEpisode(ep.number)}
                       />
