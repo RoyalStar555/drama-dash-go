@@ -146,6 +146,21 @@ const Watch = () => {
     []
   );
 
+  const { markEpisodeWatched, reportTotal, get } = useMyList();
+  const watchedEntry = item ? get(item.id) : undefined;
+  const watchedSet = new Set(watchedEntry?.watched || []);
+
+  // Tell the list how many episodes exist so it can detect "new episode" later
+  useEffect(() => {
+    if (item) reportTotal(item, episodes.length);
+  }, [item, episodes.length, reportTotal]);
+
+  // Mark active episode as watched when the user selects one
+  useEffect(() => {
+    if (item) markEpisodeWatched(item, activeEpisode, episodes.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEpisode, item?.id]);
+
   const downloadHref = trailerKey
     ? `https://www.youtube.com/watch?v=${trailerKey}`
     : item?.externalUrl || "#";
@@ -278,16 +293,19 @@ const Watch = () => {
                     {` · Episode ${activeEpisode}`}
                   </p>
                 </div>
-                <Button asChild size="lg" className="gap-2">
-                  <a
-                    href={downloadHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download
-                  >
-                    <Download className="h-4 w-4" /> Download
-                  </a>
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {item && <MyListMenu item={item} />}
+                  <Button asChild size="lg" variant="secondary" className="gap-2">
+                    <a
+                      href={downloadHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                    >
+                      <Download className="h-4 w-4" /> Download
+                    </a>
+                  </Button>
+                </div>
               </div>
               {item?.overview ? (
                 <p className="max-w-3xl text-sm leading-relaxed text-foreground/85 sm:text-base">
