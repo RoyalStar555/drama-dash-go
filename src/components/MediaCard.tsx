@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MediaItem, PLACEHOLDER } from "@/lib/api";
 import { Play, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MyListMenu } from "@/components/MyListMenu";
 import { cn } from "@/lib/utils";
 
 interface Props {
