@@ -33,18 +33,21 @@ const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 const Index = () => {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<MediaItem | null>(null);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Drama → Watch page directly. Other categories → modal.
+  // All clicks now navigate to a dedicated page (dramas → /watch, others → /title)
   const handleSelect = (item: MediaItem) => {
     if (item.category === "drama") {
       cacheWatchItem(item);
       navigate(`/watch/${encodeURIComponent(item.id)}`);
       return;
     }
-    setSelected(item);
+    // Cache so /title/:id can hydrate immediately
+    try {
+      sessionStorage.setItem("storyhub_watch_" + item.id, JSON.stringify(item));
+    } catch { /* ignore */ }
+    navigate(`/title/${encodeURIComponent(item.id)}`);
   };
 
   // Restore search on back-nav
@@ -121,11 +124,23 @@ const Index = () => {
                 <span className="text-primary">Story</span>Hub
               </button>
             </div>
-            <SearchPalette
-              initialQuery={query}
-              onQueryChange={setQuery}
-              onSelect={handleSelect}
-            />
+            <div className="flex flex-1 items-center gap-2 sm:justify-end">
+              <SearchPalette
+                initialQuery={query}
+                onQueryChange={setQuery}
+                onSelect={handleSelect}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/my-list")}
+                className="gap-1.5"
+                aria-label="My List"
+              >
+                <Bookmark className="h-4 w-4" />
+                <span className="hidden sm:inline">My List</span>
+              </Button>
+            </div>
           </div>
           <nav aria-label="Categories">
             <ul className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -161,6 +176,8 @@ const Index = () => {
             onMore={handleSelect}
           />
 
+          <ContinueWatchingRow />
+
           {filteredRows.map((row) =>
             row.visible ? (
               <MediaRow
@@ -187,8 +204,6 @@ const Index = () => {
         Data: TMDB · Jikan (MyAnimeList) · Open Library — TMDB requests proxied
         via corsproxy.io
       </footer>
-
-      <DetailModal item={selected} onClose={() => setSelected(null)} />
     </div>
   );
 };
