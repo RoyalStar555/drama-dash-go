@@ -15,6 +15,7 @@ import {
   Sparkles,
   BookOpen,
   Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,7 +51,10 @@ const TitleDetail = () => {
 
   const [item, setItem] = useState<MediaItem | null>(() => loadCachedItem(id));
   const [synopsisOpen, setSynopsisOpen] = useState(true);
-  const [activeEp, setActiveEp] = useState(1);
+  const [activeEp, setActiveEp] = useState<number | null>(null);
+  const [hasPicked, setHasPicked] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerVisible, setViewerVisible] = useState(false); // for fade-out
   const playerRef = useRef<HTMLDivElement>(null);
 
   const { get, markEpisodeWatched, reportTotal } = useMyList();
@@ -113,19 +117,39 @@ const TitleDetail = () => {
     [totalUnits, isReader]
   );
 
-  const handleWatchNow = () => {
-    if (item) markEpisodeWatched(item, activeEp, totalUnits);
-    playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const openViewer = () => {
+    if (!hasPicked || activeEp == null || !item) return;
+    markEpisodeWatched(item, activeEp, totalUnits);
+    setViewerOpen(true);
+    // Trigger fade-in next frame
+    requestAnimationFrame(() => setViewerVisible(true));
+  };
+
+  const closeViewer = () => {
+    setViewerVisible(false);
+    // Wait for fade-out before unmounting
+    setTimeout(() => setViewerOpen(false), 250);
   };
 
   const pickEpisode = (n: number) => {
     setActiveEp(n);
-    if (item) markEpisodeWatched(item, n, totalUnits);
-    setTimeout(
-      () => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      80
-    );
+    setHasPicked(true);
   };
+
+  // Close viewer with Escape
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeViewer();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerOpen]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -221,12 +245,33 @@ const TitleDetail = () => {
                   {item.title}
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <Button size="lg" className="gap-2" onClick={handleWatchNow}>
+                  <Button
+                    size="lg"
+                    className="gap-2 transition-all"
+                    onClick={openViewer}
+                    disabled={!hasPicked || activeEp == null}
+                    title={
+                      !hasPicked
+                        ? `Select ${isReader ? "a chapter" : "an episode"} below first`
+                        : undefined
+                    }
+                  >
                     <Play className="h-4 w-4" fill="currentColor" />
-                    {isReader ? "Read Now" : "Watch Now"}
+                    {hasPicked
+                      ? isReader
+                        ? `Read Chapter ${activeEp}`
+                        : `Watch Episode ${activeEp}`
+                      : isReader
+                        ? "Pick a Chapter"
+                        : "Pick an Episode"}
                   </Button>
                   <MyListMenu item={item} />
                 </div>
+                {!hasPicked && (
+                  <p className="mt-2 text-xs text-muted-foreground animate-fade-in">
+                    Choose {isReader ? "a chapter" : "an episode"} below to enable the {isReader ? "reader" : "player"}.
+                  </p>
+                )}
               </div>
 
               {/* Collapsible synopsis */}
@@ -279,7 +324,9 @@ const TitleDetail = () => {
                     <span>
                       {watched.length}/{totalUnits} {isReader ? "chapters" : "episodes"} watched
                     </span>
-                    <span>Click a number to jump to the player</span>
+                    <span>
+                      Select to enable {isReader ? "the reader" : "the player"}
+                    </span>
                   </div>
                   <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12">
                     {episodes.map((ep) => {
@@ -385,58 +432,156 @@ const TitleDetail = () => {
           </div>
         )}
 
-        {/* Mock player / reader — Watch Now scrolls here */}
-        {item && (
-          <section
+        {/* Smart Content Switcher — full-screen viewer overlay */}
+        {item && viewerOpen && (
+          <div
             ref={playerRef}
-            className="mt-12 scroll-mt-24 space-y-3"
-            aria-label={isReader ? "Reader" : "Player"}
-          >
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-xl font-bold md:text-2xl">
-                {isReader ? `Reading: Chapter ${activeEp}` : `Now Playing: Episode ${activeEp}`}
-              </h2>
-              <span className="text-xs text-muted-foreground">{item.title}</span>
-            </div>
-            {isReader ? (
-              <div className="rounded-2xl border border-border bg-card/70 p-8 backdrop-blur">
-                <div className="mx-auto max-w-2xl space-y-4 text-foreground/90">
-                  <h3 className="text-lg font-bold">
-                    Chapter {activeEp} — {item.title}
-                  </h3>
-                  <p className="text-sm leading-relaxed">
-                    This is a mock reader view. In production, the chapter content
-                    would render here with images and text. Navigate between chapters
-                    using the grid above; chapters you open are tracked automatically
-                    in your "Watching" list.
-                  </p>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {item.overview || "No preview text available."}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-2xl">
-                <div className="relative aspect-video w-full">
-                  {trailerKey ? (
-                    <iframe
-                      key={`${trailerKey}-${activeEp}`}
-                      src={`https://www.youtube.com/embed/${trailerKey}?autoplay=0&rel=0`}
-                      title={item.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="absolute inset-0 h-full w-full"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                      <Play className="h-10 w-10 opacity-50" />
-                      <p className="text-sm">Mock player · Episode {activeEp}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+            className={cn(
+              "fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-sm transition-opacity duration-300",
+              viewerVisible ? "opacity-100" : "opacity-0"
             )}
-          </section>
+            role="dialog"
+            aria-modal="true"
+            aria-label={isReader ? "Reader view" : "Video player"}
+          >
+            {/* Viewer header */}
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-background/80 px-4 py-3 sm:px-8">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                  {isReader ? "Reader" : "Now Playing"}
+                </p>
+                <h2 className="truncate text-base font-bold sm:text-lg">
+                  {item.title}
+                  <span className="ml-2 text-muted-foreground">
+                    · {isReader ? `Chapter ${activeEp}` : `Episode ${activeEp}`}
+                  </span>
+                </h2>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeViewer}
+                className="gap-1.5"
+                aria-label="Close viewer"
+              >
+                <X className="h-4 w-4" />
+                <span className="hidden sm:inline">Close</span>
+              </Button>
+            </div>
+
+            {/* Viewer body */}
+            <div className="flex-1 overflow-y-auto">
+              {isReader ? (
+                <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-12 animate-fade-in">
+                  <div className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur sm:p-10">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Chapter {activeEp}
+                    </p>
+                    <h3 className="mt-1 text-2xl font-extrabold sm:text-3xl">
+                      {item.title}
+                    </h3>
+                    <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-foreground/90">
+                      <p>
+                        Welcome to the full-screen reader. This immersive view
+                        is dedicated to chapter {activeEp} of{" "}
+                        <em>{item.title}</em>.
+                      </p>
+                      <p>
+                        In production, the chapter pages would render here as
+                        scrollable images (manga) or formatted text (books).
+                        Your progress is automatically saved to your
+                        "Watching" list.
+                      </p>
+                      <p className="text-muted-foreground">
+                        {item.overview || "No preview text available."}
+                      </p>
+                    </div>
+
+                    <div className="mt-8 flex items-center justify-between gap-3 border-t border-border pt-6">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!activeEp || activeEp <= 1}
+                        onClick={() => activeEp && pickEpisode(activeEp - 1)}
+                      >
+                        ← Previous
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        Chapter {activeEp} of {totalUnits}
+                      </span>
+                      <Button
+                        size="sm"
+                        disabled={!activeEp || activeEp >= totalUnits}
+                        onClick={() => {
+                          if (activeEp) {
+                            const next = activeEp + 1;
+                            pickEpisode(next);
+                            markEpisodeWatched(item, next, totalUnits);
+                          }
+                        }}
+                      >
+                        Next →
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mx-auto flex h-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-8 animate-fade-in">
+                  <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-2xl">
+                    <div className="relative aspect-video w-full">
+                      {trailerKey ? (
+                        <iframe
+                          key={`${trailerKey}-${activeEp}`}
+                          src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0`}
+                          title={item.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="absolute inset-0 h-full w-full"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                          <Play className="h-12 w-12 opacity-50" />
+                          <p className="text-sm">
+                            Mock player · Episode {activeEp}
+                          </p>
+                          <p className="text-xs">
+                            No trailer available for this title.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!activeEp || activeEp <= 1}
+                      onClick={() => activeEp && pickEpisode(activeEp - 1)}
+                    >
+                      ← Previous
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Episode {activeEp} of {totalUnits}
+                    </span>
+                    <Button
+                      size="sm"
+                      disabled={!activeEp || activeEp >= totalUnits}
+                      onClick={() => {
+                        if (activeEp) {
+                          const next = activeEp + 1;
+                          pickEpisode(next);
+                          markEpisodeWatched(item, next, totalUnits);
+                        }
+                      }}
+                    >
+                      Next →
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {related.length > 0 && (
