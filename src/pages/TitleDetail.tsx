@@ -15,17 +15,21 @@ import {
   Sparkles,
   BookOpen,
   Check,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MediaItem, PLACEHOLDER, fetchRelated, fetchTrailerKey } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, fetchRelated } from "@/lib/api";
 import { useMyList } from "@/hooks/useMyList";
 import { MyListMenu } from "@/components/MyListMenu";
 import { MediaRow } from "@/components/MediaRow";
+import { HlsPlayer } from "@/components/HlsPlayer";
 import { cacheWatchItem } from "@/pages/Watch";
 import { cn } from "@/lib/utils";
+
+// Reliable HLS test stream — bypasses CORS / regional issues
+const DEMO_HLS_SRC =
+  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
 
 const STORAGE_PREFIX = "storyhub_watch_";
 const loadCachedItem = (id: string): MediaItem | null => {
@@ -82,13 +86,6 @@ const TitleDetail = () => {
 
   const entry = item ? get(item.id) : undefined;
   const watched = entry?.watched || [];
-
-  const { data: trailerKey } = useQuery({
-    queryKey: ["trailer", item?.id],
-    queryFn: () => (item ? fetchTrailerKey(item) : Promise.resolve(null)),
-    enabled: !!item,
-    staleTime: 1000 * 60 * 30,
-  });
 
   const { data: related = [], isLoading: relatedLoading } = useQuery({
     queryKey: ["related", item?.id],
@@ -458,101 +455,99 @@ const TitleDetail = () => {
                 </h2>
               </div>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={closeViewer}
                 className="gap-1.5"
-                aria-label="Close viewer"
+                aria-label="Back to info"
               >
-                <X className="h-4 w-4" />
-                <span className="hidden sm:inline">Close</span>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Back to Info</span>
+                <span className="sm:hidden">Back</span>
               </Button>
             </div>
 
             {/* Viewer body */}
             <div className="flex-1 overflow-y-auto">
               {isReader ? (
-                <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-12 animate-fade-in">
-                  <div className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur sm:p-10">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="mx-auto max-w-2xl px-2 py-4 sm:px-4 sm:py-8 animate-fade-in">
+                  <div className="mb-4 px-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-primary">
                       Chapter {activeEp}
                     </p>
-                    <h3 className="mt-1 text-2xl font-extrabold sm:text-3xl">
+                    <h3 className="mt-1 text-xl font-extrabold sm:text-2xl">
                       {item.title}
                     </h3>
-                    <div className="mt-6 space-y-4 text-[15px] leading-relaxed text-foreground/90">
-                      <p>
-                        Welcome to the full-screen reader. This immersive view
-                        is dedicated to chapter {activeEp} of{" "}
-                        <em>{item.title}</em>.
-                      </p>
-                      <p>
-                        In production, the chapter pages would render here as
-                        scrollable images (manga) or formatted text (books).
-                        Your progress is automatically saved to your
-                        "Watching" list.
-                      </p>
-                      <p className="text-muted-foreground">
-                        {item.overview || "No preview text available."}
-                      </p>
-                    </div>
+                  </div>
 
-                    <div className="mt-8 flex items-center justify-between gap-3 border-t border-border pt-6">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={!activeEp || activeEp <= 1}
-                        onClick={() => activeEp && pickEpisode(activeEp - 1)}
-                      >
-                        ← Previous
-                      </Button>
-                      <span className="text-xs text-muted-foreground">
-                        Chapter {activeEp} of {totalUnits}
-                      </span>
-                      <Button
-                        size="sm"
-                        disabled={!activeEp || activeEp >= totalUnits}
-                        onClick={() => {
-                          if (activeEp) {
-                            const next = activeEp + 1;
-                            pickEpisode(next);
-                            markEpisodeWatched(item, next, totalUnits);
+                  {/* Webtoon-style vertical scroll: stacked images */}
+                  <div className="space-y-1 overflow-hidden rounded-xl bg-black/60">
+                    {Array.from({ length: 8 }).map((_, i) => {
+                      // Deterministic placeholder images for the chapter
+                      const seed = `${item.id}-${activeEp}-${i}`;
+                      const url = `https://picsum.photos/seed/${encodeURIComponent(seed)}/800/1100`;
+                      return (
+                        <img
+                          key={i}
+                          src={url}
+                          alt={`Chapter ${activeEp} page ${i + 1}`}
+                          loading={i < 2 ? "eager" : "lazy"}
+                          className="block w-full"
+                          onError={(e) =>
+                            ((e.target as HTMLImageElement).src = PLACEHOLDER)
                           }
-                        }}
-                      >
-                        Next →
-                      </Button>
-                    </div>
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Bottom chapter nav */}
+                  <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!activeEp || activeEp <= 1}
+                      onClick={() => activeEp && pickEpisode(activeEp - 1)}
+                    >
+                      ← Previous
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Chapter {activeEp} of {totalUnits}
+                    </span>
+                    <Button
+                      size="sm"
+                      disabled={!activeEp || activeEp >= totalUnits}
+                      onClick={() => {
+                        if (activeEp) {
+                          const next = activeEp + 1;
+                          pickEpisode(next);
+                          markEpisodeWatched(item, next, totalUnits);
+                        }
+                      }}
+                    >
+                      Next →
+                    </Button>
                   </div>
                 </div>
               ) : (
-                <div className="mx-auto flex h-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-8 animate-fade-in">
-                  <div className="overflow-hidden rounded-2xl border border-border bg-black shadow-2xl">
+                <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-2 py-3 sm:px-6 sm:py-6 animate-fade-in">
+                  <div className="overflow-hidden rounded-xl border border-border bg-black shadow-2xl sm:rounded-2xl">
                     <div className="relative aspect-video w-full">
-                      {trailerKey ? (
-                        <iframe
-                          key={`${trailerKey}-${activeEp}`}
-                          src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0`}
-                          title={item.title}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="absolute inset-0 h-full w-full"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                          <Play className="h-12 w-12 opacity-50" />
-                          <p className="text-sm">
-                            Mock player · Episode {activeEp}
-                          </p>
-                          <p className="text-xs">
-                            No trailer available for this title.
-                          </p>
-                        </div>
-                      )}
+                      <HlsPlayer
+                        key={`${item.id}-${activeEp}`}
+                        src={DEMO_HLS_SRC}
+                        poster={item.backdrop || item.poster}
+                        title={`${item.title} — Episode ${activeEp}`}
+                        className="absolute inset-0 h-full w-full bg-black"
+                      />
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3">
+                  <p className="px-1 text-[11px] text-muted-foreground">
+                    Streaming demo content (Tears of Steel) for Episode {activeEp}.
+                  </p>
+
+                  <div className="flex items-center justify-between gap-2">
                     <Button
                       variant="outline"
                       size="sm"
