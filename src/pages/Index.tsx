@@ -193,8 +193,8 @@ const Index = () => {
 
         <main className="flex-1 min-w-0 space-y-8 py-8">
           <TrendingSlider
-            items={trendingQueries[1].data || trendingQueries[0].data || []}
-            loading={trendingQueries[1].isLoading}
+            items={rowQueries[1].data || rowQueries[0].data || []}
+            loading={rowQueries[1].isLoading}
             onPlay={handleSelect}
             onMore={handleSelect}
           />
