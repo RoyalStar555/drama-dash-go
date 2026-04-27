@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MediaItem, PLACEHOLDER, fetchRelated, fetchTrailerKey } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, fetchRelated } from "@/lib/api";
 import { useMyList } from "@/hooks/useMyList";
 import { MyListMenu } from "@/components/MyListMenu";
 import { MediaRow } from "@/components/MediaRow";
