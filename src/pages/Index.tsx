@@ -11,17 +11,36 @@ import { FilterSidebar, applyFilters, DEFAULT_FILTERS, Filters } from "@/compone
 import { cacheWatchItem } from "@/pages/Watch";
 import {
   fetchTrending,
+  fetchSecondary,
   MediaCategory,
   MediaItem,
 } from "@/lib/api";
 
-const CATEGORIES: { key: MediaCategory; label: string; navLabel: string }[] = [
-  { key: "movie", label: "Trending Movies", navLabel: "Movies" },
-  { key: "drama", label: "Popular Dramas", navLabel: "Dramas" },
-  { key: "anime", label: "Top Anime", navLabel: "Anime" },
-  { key: "manga", label: "Top Manga", navLabel: "Manga" },
-  { key: "book", label: "Bestselling Books", navLabel: "Books" },
+interface RowDef {
+  key: string;
+  category: MediaCategory;
+  label: string;
+  navLabel: string;
+  source: "trending" | "secondary";
+  showInNav?: boolean;
+}
+
+// Distinct, horizontally scrolling sections — every category gets at least
+// one primary row, plus a secondary row to make the home page feel full.
+const ROWS: RowDef[] = [
+  { key: "movie", category: "movie", label: "Trending Movies", navLabel: "Movies", source: "trending", showInNav: true },
+  { key: "drama", category: "drama", label: "Popular Dramas", navLabel: "Dramas", source: "trending", showInNav: true },
+  { key: "anime", category: "anime", label: "Trending Anime", navLabel: "Anime", source: "trending", showInNav: true },
+  { key: "manga", category: "manga", label: "Top Manga", navLabel: "Manga", source: "trending", showInNav: true },
+  { key: "book", category: "book", label: "Bestselling Books", navLabel: "Books", source: "trending", showInNav: true },
+  { key: "movie-recent", category: "movie", label: "Recent Movies in Theaters", navLabel: "Recent Movies", source: "secondary" },
+  { key: "anime-season", category: "anime", label: "This Season's Anime", navLabel: "Seasonal Anime", source: "secondary" },
+  { key: "drama-top", category: "drama", label: "Top Rated Dramas", navLabel: "Top Dramas", source: "secondary" },
+  { key: "manga-popular", category: "manga", label: "Most Popular Manga", navLabel: "Popular Manga", source: "secondary" },
+  { key: "book-fantasy", category: "book", label: "Fantasy Bookshelf", navLabel: "Fantasy Books", source: "secondary" },
 ];
+
+const NAV_CATEGORIES = ROWS.filter((r) => r.showInNav);
 
 const scrollToSection = (key: string) => {
   const el = document.getElementById(`section-${key}`);
