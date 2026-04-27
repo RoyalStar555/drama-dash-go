@@ -117,19 +117,39 @@ const TitleDetail = () => {
     [totalUnits, isReader]
   );
 
-  const handleWatchNow = () => {
-    if (item) markEpisodeWatched(item, activeEp, totalUnits);
-    playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const openViewer = () => {
+    if (!hasPicked || activeEp == null || !item) return;
+    markEpisodeWatched(item, activeEp, totalUnits);
+    setViewerOpen(true);
+    // Trigger fade-in next frame
+    requestAnimationFrame(() => setViewerVisible(true));
+  };
+
+  const closeViewer = () => {
+    setViewerVisible(false);
+    // Wait for fade-out before unmounting
+    setTimeout(() => setViewerOpen(false), 250);
   };
 
   const pickEpisode = (n: number) => {
     setActiveEp(n);
-    if (item) markEpisodeWatched(item, n, totalUnits);
-    setTimeout(
-      () => playerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      80
-    );
+    setHasPicked(true);
   };
+
+  // Close viewer with Escape
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeViewer();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerOpen]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
