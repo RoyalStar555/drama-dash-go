@@ -15,7 +15,6 @@ import {
   Sparkles,
   BookOpen,
   Check,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
