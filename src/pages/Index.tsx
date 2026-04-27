@@ -167,7 +167,7 @@ const Index = () => {
           </div>
           <nav aria-label="Categories">
             <ul className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {CATEGORIES.map((c) => (
+              {NAV_CATEGORIES.map((c) => (
                 <li key={c.key}>
                   <button
                     type="button"
