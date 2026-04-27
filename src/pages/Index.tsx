@@ -11,17 +11,36 @@ import { FilterSidebar, applyFilters, DEFAULT_FILTERS, Filters } from "@/compone
 import { cacheWatchItem } from "@/pages/Watch";
 import {
   fetchTrending,
+  fetchSecondary,
   MediaCategory,
   MediaItem,
 } from "@/lib/api";
 
-const CATEGORIES: { key: MediaCategory; label: string; navLabel: string }[] = [
-  { key: "movie", label: "Trending Movies", navLabel: "Movies" },
-  { key: "drama", label: "Popular Dramas", navLabel: "Dramas" },
-  { key: "anime", label: "Top Anime", navLabel: "Anime" },
-  { key: "manga", label: "Top Manga", navLabel: "Manga" },
-  { key: "book", label: "Bestselling Books", navLabel: "Books" },
+interface RowDef {
+  key: string;
+  category: MediaCategory;
+  label: string;
+  navLabel: string;
+  source: "trending" | "secondary";
+  showInNav?: boolean;
+}
+
+// Distinct, horizontally scrolling sections — every category gets at least
+// one primary row, plus a secondary row to make the home page feel full.
+const ROWS: RowDef[] = [
+  { key: "movie", category: "movie", label: "Trending Movies", navLabel: "Movies", source: "trending", showInNav: true },
+  { key: "drama", category: "drama", label: "Popular Dramas", navLabel: "Dramas", source: "trending", showInNav: true },
+  { key: "anime", category: "anime", label: "Trending Anime", navLabel: "Anime", source: "trending", showInNav: true },
+  { key: "manga", category: "manga", label: "Top Manga", navLabel: "Manga", source: "trending", showInNav: true },
+  { key: "book", category: "book", label: "Bestselling Books", navLabel: "Books", source: "trending", showInNav: true },
+  { key: "movie-recent", category: "movie", label: "Recent Movies in Theaters", navLabel: "Recent Movies", source: "secondary" },
+  { key: "anime-season", category: "anime", label: "This Season's Anime", navLabel: "Seasonal Anime", source: "secondary" },
+  { key: "drama-top", category: "drama", label: "Top Rated Dramas", navLabel: "Top Dramas", source: "secondary" },
+  { key: "manga-popular", category: "manga", label: "Most Popular Manga", navLabel: "Popular Manga", source: "secondary" },
+  { key: "book-fantasy", category: "book", label: "Fantasy Bookshelf", navLabel: "Fantasy Books", source: "secondary" },
 ];
+
+const NAV_CATEGORIES = ROWS.filter((r) => r.showInNav);
 
 const scrollToSection = (key: string) => {
   const el = document.getElementById(`section-${key}`);
@@ -59,30 +78,34 @@ const Index = () => {
     sessionStorage.setItem("storyhub_query", query);
   }, [query]);
 
-  const trendingQueries = CATEGORIES.map((c) =>
+  const rowQueries = ROWS.map((r) =>
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useQuery({
-      queryKey: ["trending", c.key],
-      queryFn: () => fetchTrending(c.key),
+      queryKey: ["row", r.key],
+      queryFn: () =>
+        r.source === "trending"
+          ? fetchTrending(r.category)
+          : fetchSecondary(r.category),
       staleTime: 1000 * 60 * 10,
     })
   );
 
   // Apply filters per row, and hide categories not selected (when filter active)
   const filteredRows = useMemo(() => {
-    return CATEGORIES.map((c, i) => {
-      const items = trendingQueries[i].data || [];
+    return ROWS.map((r, i) => {
+      const items = rowQueries[i].data || [];
       const filtered = applyFilters(items, filters);
       const visible =
-        filters.categories.length === 0 || filters.categories.includes(c.key);
+        filters.categories.length === 0 ||
+        filters.categories.includes(r.category);
       return {
-        ...c,
+        ...r,
         items: filtered,
         visible,
-        loading: trendingQueries[i].isLoading,
+        loading: rowQueries[i].isLoading,
       };
     });
-  }, [trendingQueries, filters]);
+  }, [rowQueries, filters]);
 
   const activeFilterCount =
     filters.categories.length +
@@ -144,7 +167,7 @@ const Index = () => {
           </div>
           <nav aria-label="Categories">
             <ul className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {CATEGORIES.map((c) => (
+              {NAV_CATEGORIES.map((c) => (
                 <li key={c.key}>
                   <button
                     type="button"
@@ -170,8 +193,8 @@ const Index = () => {
 
         <main className="flex-1 min-w-0 space-y-8 py-8">
           <TrendingSlider
-            items={trendingQueries[1].data || trendingQueries[0].data || []}
-            loading={trendingQueries[1].isLoading}
+            items={rowQueries[1].data || rowQueries[0].data || []}
+            loading={rowQueries[1].isLoading}
             onPlay={handleSelect}
             onMore={handleSelect}
           />

@@ -154,35 +154,82 @@ function mapOL(d: OLResp["docs"] = []): MediaItem[] {
 }
 
 // ---- Public API -------------------------------------------------------------
+import { MOCK_BY_CATEGORY } from "./mockData";
+
+// Always merge mock items so categories never appear empty.
+function withFallback(items: MediaItem[], category: MediaCategory): MediaItem[] {
+  const mocks = MOCK_BY_CATEGORY[category] || [];
+  if (items.length >= 5) return items;
+  // Append mocks that aren't already present (by title) until we have plenty.
+  const seen = new Set(items.map((i) => i.title.toLowerCase()));
+  const extras = mocks.filter((m) => !seen.has(m.title.toLowerCase()));
+  return [...items, ...extras];
+}
+
 export async function fetchTrending(
   category: MediaCategory
 ): Promise<MediaItem[]> {
   switch (category) {
     case "movie": {
       const r = await tmdb<TmdbResult>("/trending/movie/week");
-      return mapTmdb(r?.results, "movie", "movie");
+      return withFallback(mapTmdb(r?.results, "movie", "movie"), "movie");
     }
     case "drama": {
       const r = await tmdb<TmdbResult>("/trending/tv/week");
-      return mapTmdb(r?.results, "tv", "drama");
+      return withFallback(mapTmdb(r?.results, "tv", "drama"), "drama");
     }
     case "anime": {
       const r = await safeJson<JikanResp>(
         "https://api.jikan.moe/v4/top/anime?limit=20"
       );
-      return mapJikan(r?.data, "anime");
+      return withFallback(mapJikan(r?.data, "anime"), "anime");
     }
     case "manga": {
       const r = await safeJson<JikanResp>(
         "https://api.jikan.moe/v4/top/manga?limit=20"
       );
-      return mapJikan(r?.data, "manga");
+      return withFallback(mapJikan(r?.data, "manga"), "manga");
     }
     case "book": {
       const r = await safeJson<OLResp>(
         "https://openlibrary.org/search.json?q=bestseller&limit=20"
       );
-      return mapOL(r?.docs);
+      return withFallback(mapOL(r?.docs), "book");
+    }
+  }
+}
+
+// Secondary feeds — used to populate distinct rows like "Recent Movies",
+// "Trending Anime This Season", etc. Falls back to mocks when offline.
+export async function fetchSecondary(
+  category: MediaCategory
+): Promise<MediaItem[]> {
+  switch (category) {
+    case "movie": {
+      const r = await tmdb<TmdbResult>("/movie/now_playing");
+      return withFallback(mapTmdb(r?.results, "movie", "movie"), "movie");
+    }
+    case "drama": {
+      const r = await tmdb<TmdbResult>("/tv/top_rated");
+      return withFallback(mapTmdb(r?.results, "tv", "drama"), "drama");
+    }
+    case "anime": {
+      const r = await safeJson<JikanResp>(
+        "https://api.jikan.moe/v4/seasons/now?limit=20"
+      );
+      return withFallback(mapJikan(r?.data, "anime"), "anime");
+    }
+    case "manga": {
+      const r = await safeJson<JikanResp>(
+        "https://api.jikan.moe/v4/manga?order_by=popularity&limit=20"
+      );
+      return withFallback(mapJikan(r?.data, "manga"), "manga");
+    }
+    case "book": {
+      const r = await safeJson<OLResp>(
+        "https://openlibrary.org/search.json?q=fantasy&limit=20"
+      );
+      return withFallback(mapOL(r?.docs), "book");
     }
   }
 }
