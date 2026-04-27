@@ -78,30 +78,34 @@ const Index = () => {
     sessionStorage.setItem("storyhub_query", query);
   }, [query]);
 
-  const trendingQueries = CATEGORIES.map((c) =>
+  const rowQueries = ROWS.map((r) =>
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useQuery({
-      queryKey: ["trending", c.key],
-      queryFn: () => fetchTrending(c.key),
+      queryKey: ["row", r.key],
+      queryFn: () =>
+        r.source === "trending"
+          ? fetchTrending(r.category)
+          : fetchSecondary(r.category),
       staleTime: 1000 * 60 * 10,
     })
   );
 
   // Apply filters per row, and hide categories not selected (when filter active)
   const filteredRows = useMemo(() => {
-    return CATEGORIES.map((c, i) => {
-      const items = trendingQueries[i].data || [];
+    return ROWS.map((r, i) => {
+      const items = rowQueries[i].data || [];
       const filtered = applyFilters(items, filters);
       const visible =
-        filters.categories.length === 0 || filters.categories.includes(c.key);
+        filters.categories.length === 0 ||
+        filters.categories.includes(r.category);
       return {
-        ...c,
+        ...r,
         items: filtered,
         visible,
-        loading: trendingQueries[i].isLoading,
+        loading: rowQueries[i].isLoading,
       };
     });
-  }, [trendingQueries, filters]);
+  }, [rowQueries, filters]);
 
   const activeFilterCount =
     filters.categories.length +
