@@ -245,12 +245,33 @@ const TitleDetail = () => {
                   {item.title}
                 </h1>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <Button size="lg" className="gap-2" onClick={handleWatchNow}>
+                  <Button
+                    size="lg"
+                    className="gap-2 transition-all"
+                    onClick={openViewer}
+                    disabled={!hasPicked || activeEp == null}
+                    title={
+                      !hasPicked
+                        ? `Select ${isReader ? "a chapter" : "an episode"} below first`
+                        : undefined
+                    }
+                  >
                     <Play className="h-4 w-4" fill="currentColor" />
-                    {isReader ? "Read Now" : "Watch Now"}
+                    {hasPicked
+                      ? isReader
+                        ? `Read Chapter ${activeEp}`
+                        : `Watch Episode ${activeEp}`
+                      : isReader
+                        ? "Pick a Chapter"
+                        : "Pick an Episode"}
                   </Button>
                   <MyListMenu item={item} />
                 </div>
+                {!hasPicked && (
+                  <p className="mt-2 text-xs text-muted-foreground animate-fade-in">
+                    Choose {isReader ? "a chapter" : "an episode"} below to enable the {isReader ? "reader" : "player"}.
+                  </p>
+                )}
               </div>
 
               {/* Collapsible synopsis */}
