@@ -24,8 +24,13 @@ import { MediaItem, PLACEHOLDER, fetchRelated, fetchTrailerKey } from "@/lib/api
 import { useMyList } from "@/hooks/useMyList";
 import { MyListMenu } from "@/components/MyListMenu";
 import { MediaRow } from "@/components/MediaRow";
+import { HlsPlayer } from "@/components/HlsPlayer";
 import { cacheWatchItem } from "@/pages/Watch";
 import { cn } from "@/lib/utils";
+
+// Reliable HLS test stream — bypasses CORS / regional issues
+const DEMO_HLS_SRC =
+  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
 
 const STORAGE_PREFIX = "storyhub_watch_";
 const loadCachedItem = (id: string): MediaItem | null => {
