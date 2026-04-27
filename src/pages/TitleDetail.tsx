@@ -87,13 +87,6 @@ const TitleDetail = () => {
   const entry = item ? get(item.id) : undefined;
   const watched = entry?.watched || [];
 
-  const { data: trailerKey } = useQuery({
-    queryKey: ["trailer", item?.id],
-    queryFn: () => (item ? fetchTrailerKey(item) : Promise.resolve(null)),
-    enabled: !!item,
-    staleTime: 1000 * 60 * 30,
-  });
-
   const { data: related = [], isLoading: relatedLoading } = useQuery({
     queryKey: ["related", item?.id],
     queryFn: () => (item ? fetchRelated(item) : Promise.resolve([])),
