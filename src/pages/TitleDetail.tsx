@@ -324,7 +324,9 @@ const TitleDetail = () => {
                     <span>
                       {watched.length}/{totalUnits} {isReader ? "chapters" : "episodes"} watched
                     </span>
-                    <span>Click a number to jump to the player</span>
+                    <span>
+                      Select to enable {isReader ? "the reader" : "the player"}
+                    </span>
                   </div>
                   <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12">
                     {episodes.map((ep) => {
