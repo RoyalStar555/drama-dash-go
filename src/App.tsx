@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Watch from "./pages/Watch.tsx";
 import MyList from "./pages/MyList.tsx";
 import TitleDetail from "./pages/TitleDetail.tsx";
+import Category from "./pages/Category.tsx";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/watch/:id" element={<Watch />} />
           <Route path="/title/:id" element={<TitleDetail />} />
+          <Route path="/read/:id" element={<TitleDetail />} />
+          <Route path="/category/:category" element={<Category />} />
           <Route path="/my-list" element={<MyList />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

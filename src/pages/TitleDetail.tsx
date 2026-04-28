@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -19,17 +19,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MediaItem, PLACEHOLDER, fetchRelated } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, fetchRelated, getContentType } from "@/lib/api";
 import { useMyList } from "@/hooks/useMyList";
 import { MyListMenu } from "@/components/MyListMenu";
 import { MediaRow } from "@/components/MediaRow";
-import { HlsPlayer } from "@/components/HlsPlayer";
+import { MediaViewer } from "@/components/MediaViewer";
 import { cacheWatchItem } from "@/pages/Watch";
 import { cn } from "@/lib/utils";
-
-// Reliable HLS test stream — bypasses CORS / regional issues
-const DEMO_HLS_SRC =
-  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
 
 const STORAGE_PREFIX = "storyhub_watch_";
 const loadCachedItem = (id: string): MediaItem | null => {
@@ -59,7 +55,7 @@ const TitleDetail = () => {
   const [hasPicked, setHasPicked] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerVisible, setViewerVisible] = useState(false); // for fade-out
-  const playerRef = useRef<HTMLDivElement>(null);
+  
 
   const { get, markEpisodeWatched, reportTotal } = useMyList();
 
@@ -76,7 +72,7 @@ const TitleDetail = () => {
     }
   }, [item, params, id]);
 
-  const isReader = item?.category === "manga" || item?.category === "book";
+  const isReader = item ? getContentType(item) === "reading" : false;
   const totalUnits = isReader ? 24 : 12; // chapters for manga/book, episodes otherwise
 
   // Notify hook of total so it can detect "new episode" when total grows
@@ -400,7 +396,7 @@ const TitleDetail = () => {
                               cacheWatchItem(r);
                               navigate(`/watch/${encodeURIComponent(r.id)}`);
                             } else {
-                              navigate(`/title/${encodeURIComponent(r.id)}`);
+                              navigate(`/${getContentType(r) === "reading" ? "read" : "title"}/${encodeURIComponent(r.id)}`);
                               setItem(r);
                               window.scrollTo({ top: 0, behavior: "smooth" });
                             }
@@ -429,154 +425,19 @@ const TitleDetail = () => {
           </div>
         )}
 
-        {/* Smart Content Switcher — full-screen viewer overlay */}
-        {item && viewerOpen && (
-          <div
-            ref={playerRef}
-            className={cn(
-              "fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-sm transition-opacity duration-300",
-              viewerVisible ? "opacity-100" : "opacity-0"
-            )}
-            role="dialog"
-            aria-modal="true"
-            aria-label={isReader ? "Reader view" : "Video player"}
-          >
-            {/* Viewer header */}
-            <div className="flex items-center justify-between gap-3 border-b border-border bg-background/80 px-4 py-3 sm:px-8">
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-primary">
-                  {isReader ? "Reader" : "Now Playing"}
-                </p>
-                <h2 className="truncate text-base font-bold sm:text-lg">
-                  {item.title}
-                  <span className="ml-2 text-muted-foreground">
-                    · {isReader ? `Chapter ${activeEp}` : `Episode ${activeEp}`}
-                  </span>
-                </h2>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={closeViewer}
-                className="gap-1.5"
-                aria-label="Back to info"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Back to Info</span>
-                <span className="sm:hidden">Back</span>
-              </Button>
-            </div>
-
-            {/* Viewer body */}
-            <div className="flex-1 overflow-y-auto">
-              {isReader ? (
-                <div className="mx-auto max-w-2xl px-2 py-4 sm:px-4 sm:py-8 animate-fade-in">
-                  <div className="mb-4 px-2">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-primary">
-                      Chapter {activeEp}
-                    </p>
-                    <h3 className="mt-1 text-xl font-extrabold sm:text-2xl">
-                      {item.title}
-                    </h3>
-                  </div>
-
-                  {/* Webtoon-style vertical scroll: stacked images */}
-                  <div className="space-y-1 overflow-hidden rounded-xl bg-black/60">
-                    {Array.from({ length: 8 }).map((_, i) => {
-                      // Deterministic placeholder images for the chapter
-                      const seed = `${item.id}-${activeEp}-${i}`;
-                      const url = `https://picsum.photos/seed/${encodeURIComponent(seed)}/800/1100`;
-                      return (
-                        <img
-                          key={i}
-                          src={url}
-                          alt={`Chapter ${activeEp} page ${i + 1}`}
-                          loading={i < 2 ? "eager" : "lazy"}
-                          className="block w-full"
-                          onError={(e) =>
-                            ((e.target as HTMLImageElement).src = PLACEHOLDER)
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-
-                  {/* Bottom chapter nav */}
-                  <div className="mt-6 flex items-center justify-between gap-2 border-t border-border pt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!activeEp || activeEp <= 1}
-                      onClick={() => activeEp && pickEpisode(activeEp - 1)}
-                    >
-                      ← Previous
-                    </Button>
-                    <span className="text-xs text-muted-foreground">
-                      Chapter {activeEp} of {totalUnits}
-                    </span>
-                    <Button
-                      size="sm"
-                      disabled={!activeEp || activeEp >= totalUnits}
-                      onClick={() => {
-                        if (activeEp) {
-                          const next = activeEp + 1;
-                          pickEpisode(next);
-                          markEpisodeWatched(item, next, totalUnits);
-                        }
-                      }}
-                    >
-                      Next →
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-2 py-3 sm:px-6 sm:py-6 animate-fade-in">
-                  <div className="overflow-hidden rounded-xl border border-border bg-black shadow-2xl sm:rounded-2xl">
-                    <div className="relative aspect-video w-full">
-                      <HlsPlayer
-                        key={`${item.id}-${activeEp}`}
-                        src={DEMO_HLS_SRC}
-                        poster={item.backdrop || item.poster}
-                        title={`${item.title} — Episode ${activeEp}`}
-                        className="absolute inset-0 h-full w-full bg-black"
-                      />
-                    </div>
-                  </div>
-
-                  <p className="px-1 text-[11px] text-muted-foreground">
-                    Streaming demo content (Tears of Steel) for Episode {activeEp}.
-                  </p>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!activeEp || activeEp <= 1}
-                      onClick={() => activeEp && pickEpisode(activeEp - 1)}
-                    >
-                      ← Previous
-                    </Button>
-                    <span className="text-xs text-muted-foreground">
-                      Episode {activeEp} of {totalUnits}
-                    </span>
-                    <Button
-                      size="sm"
-                      disabled={!activeEp || activeEp >= totalUnits}
-                      onClick={() => {
-                        if (activeEp) {
-                          const next = activeEp + 1;
-                          pickEpisode(next);
-                          markEpisodeWatched(item, next, totalUnits);
-                        }
-                      }}
-                    >
-                      Next →
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Smart Content Switcher — central MediaViewer (HLS player or webtoon reader) */}
+        {item && viewerOpen && activeEp != null && (
+          <MediaViewer
+            item={item}
+            currentSelection={activeEp}
+            total={totalUnits}
+            visible={viewerVisible}
+            onClose={closeViewer}
+            onSelectionChange={(n) => {
+              setActiveEp(n);
+              markEpisodeWatched(item, n, totalUnits);
+            }}
+          />
         )}
 
         {related.length > 0 && (
@@ -594,7 +455,7 @@ const TitleDetail = () => {
                     STORAGE_PREFIX + r.id,
                     JSON.stringify(r)
                   );
-                  navigate(`/title/${encodeURIComponent(r.id)}`);
+                  navigate(`/${getContentType(r) === "reading" ? "read" : "title"}/${encodeURIComponent(r.id)}`);
                   setItem(r);
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }
