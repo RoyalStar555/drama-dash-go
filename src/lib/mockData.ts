@@ -2,7 +2,7 @@
 // Used when external APIs (TMDB / Jikan / Open Library) are unreachable so
 // the home page always feels full and professional.
 
-import { MediaItem, PLACEHOLDER } from "./api";
+import { MediaItem, PLACEHOLDER, DEMO_HLS_URL, generatePages } from "./api";
 
 const tmdbImg = (path: string) => `https://image.tmdb.org/t/p/w500${path}`;
 const tmdbBackdrop = (path: string) =>
