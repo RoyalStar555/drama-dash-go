@@ -351,7 +351,18 @@ export const MOCK_BY_CATEGORY = {
   book: MOCK_BOOKS,
 } as const;
 
-// Ensure poster fallback safety
-for (const list of Object.values(MOCK_BY_CATEGORY)) {
-  for (const it of list) if (!it.poster) it.poster = PLACEHOLDER;
+// Normalize every mock item: ensure poster, contentType, and either
+// videoUrl (for video) or a `pages` array (for reading) exist. This guarantees
+// no blank screens when the user clicks Watch/Read.
+for (const [cat, list] of Object.entries(MOCK_BY_CATEGORY)) {
+  for (const it of list) {
+    if (!it.poster) it.poster = PLACEHOLDER;
+    if (!it.posterUrl) it.posterUrl = it.poster;
+    const isReading = cat === "manga" || cat === "book";
+    if (!it.contentType) it.contentType = isReading ? "reading" : "video";
+    if (it.contentType === "video" && !it.videoUrl) it.videoUrl = DEMO_HLS_URL;
+    if (it.contentType === "reading" && (!it.pages || it.pages.length < 5)) {
+      it.pages = generatePages(it.id, 8);
+    }
+  }
 }
