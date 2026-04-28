@@ -30,8 +30,8 @@ export const MediaRow = ({ title, items, loading, onSelect, id }: Props) => {
                 Nothing to show. The API may be temporarily unavailable.
               </p>
             )
-            : items.map((item) => (
-                <MediaCard key={item.id} item={item} onClick={onSelect} />
+            : items.map((item, idx) => (
+                <MediaCard key={`${item.id}-${idx}`} item={item} onClick={onSelect} />
               ))}
       </div>
     </section>
