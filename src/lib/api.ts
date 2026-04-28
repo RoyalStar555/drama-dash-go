@@ -235,7 +235,7 @@ function withFallback(items: MediaItem[], category: MediaCategory): MediaItem[] 
   // Append mocks that aren't already present (by title) until we have plenty.
   const seen = new Set(normalized.map((i) => i.title.toLowerCase()));
   const extras = mocks.filter((m) => !seen.has(m.title.toLowerCase()));
-  return [...items, ...extras];
+  return [...normalized, ...extras];
 }
 
 export async function fetchTrending(
