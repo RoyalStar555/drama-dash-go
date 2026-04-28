@@ -171,7 +171,7 @@ const Index = () => {
                 <li key={c.key}>
                   <button
                     type="button"
-                    onClick={() => scrollToSection(c.key)}
+                    onClick={() => navigate(`/category/${c.category}`)}
                     className="whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     {c.navLabel}
