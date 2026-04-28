@@ -212,12 +212,28 @@ function mapOL(d: OLResp["docs"] = []): MediaItem[] {
 // ---- Public API -------------------------------------------------------------
 import { MOCK_BY_CATEGORY } from "./mockData";
 
+// Ensure every item has the playback fields the viewer needs.
+export function normalizeItem(item: MediaItem): MediaItem {
+  const contentType = getContentType(item);
+  const next: MediaItem = { ...item, contentType };
+  if (!next.posterUrl) next.posterUrl = next.poster;
+  if (contentType === "video" && !next.videoUrl) next.videoUrl = DEMO_HLS_URL;
+  if (
+    contentType === "reading" &&
+    (!next.pages || next.pages.length < 5)
+  ) {
+    next.pages = generatePages(next.id, 8);
+  }
+  return next;
+}
+
 // Always merge mock items so categories never appear empty.
 function withFallback(items: MediaItem[], category: MediaCategory): MediaItem[] {
   const mocks = MOCK_BY_CATEGORY[category] || [];
-  if (items.length >= 5) return items;
+  const normalized = items.map(normalizeItem);
+  if (normalized.length >= 5) return normalized;
   // Append mocks that aren't already present (by title) until we have plenty.
-  const seen = new Set(items.map((i) => i.title.toLowerCase()));
+  const seen = new Set(normalized.map((i) => i.title.toLowerCase()));
   const extras = mocks.filter((m) => !seen.has(m.title.toLowerCase()));
   return [...items, ...extras];
 }
