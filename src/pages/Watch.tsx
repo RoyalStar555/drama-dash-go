@@ -228,10 +228,15 @@ const Watch = () => {
                       className="absolute inset-0 h-full w-full"
                     />
                   ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                      <Play className="h-10 w-10 opacity-50" />
-                      <p className="text-sm">No stream available for this title.</p>
-                    </div>
+                    // Fallback: always provide a playable HLS stream so the
+                    // user never sees a blank screen.
+                    <HlsPlayer
+                      key={`${server}-fallback-${activeEpisode}`}
+                      src={item?.videoUrl || DEMO_HLS_URL}
+                      poster={item?.backdrop || item?.poster}
+                      title={item?.title || "Watch"}
+                      className="absolute inset-0 h-full w-full"
+                    />
                   )}
                 </div>
                 {/* Theater Mode button (desktop only — hidden on small) */}
