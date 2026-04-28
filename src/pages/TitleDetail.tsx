@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -55,7 +55,7 @@ const TitleDetail = () => {
   const [hasPicked, setHasPicked] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerVisible, setViewerVisible] = useState(false); // for fade-out
-  const playerRef = useRef<HTMLDivElement>(null);
+  
 
   const { get, markEpisodeWatched, reportTotal } = useMyList();
 
