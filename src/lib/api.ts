@@ -48,12 +48,27 @@ export interface MediaItem {
   // Smart switcher fields
   contentType?: ContentType;
   metadata?: VideoMetadata | ReadingMetadata;
+  // Direct video stream (HLS) — falls back to DEMO_HLS when missing
+  videoUrl?: string;
+  // Reading content pages (URLs to high-quality images, webtoon-style)
+  pages?: string[];
   // Used for trailer / detail fetching
   tmdbId?: number;
   tmdbType?: "movie" | "tv";
   trailerQuery?: string; // YouTube search fallback
   externalUrl?: string;
 }
+
+// Reliable HLS demo stream — used as universal fallback for video items.
+export const DEMO_HLS_URL =
+  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
+
+// Generate deterministic high-quality reader pages for any item id.
+export const generatePages = (seed: string, count = 8): string[] =>
+  Array.from({ length: count }).map(
+    (_, i) =>
+      `https://picsum.photos/seed/${encodeURIComponent(`${seed}-${i}`)}/800/1100`
+  );
 
 // Derive contentType from category when not explicitly set.
 export const getContentType = (item: MediaItem): ContentType =>
