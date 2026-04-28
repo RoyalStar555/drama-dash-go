@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Maximize2, Minimize2, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HlsPlayer } from "@/components/HlsPlayer";
-import { MediaItem, PLACEHOLDER, getContentType } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, getContentType, DEMO_HLS_URL, generatePages } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-// Reliable HLS test stream — bypasses CORS / regional issues
-export const DEMO_HLS_SRC =
-  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
+// Re-export for callers that imported it from this module.
+export const DEMO_HLS_SRC = DEMO_HLS_URL;
 
 interface Props {
   item: MediaItem;
