@@ -55,18 +55,19 @@ const Index = () => {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // All clicks now navigate to a dedicated page (dramas → /watch, others → /title)
+  // Smart routing: dramas → /watch, reading → /read, others → /title
   const handleSelect = (item: MediaItem) => {
     if (item.category === "drama") {
       cacheWatchItem(item);
       navigate(`/watch/${encodeURIComponent(item.id)}`);
       return;
     }
-    // Cache so /title/:id can hydrate immediately
     try {
       sessionStorage.setItem("storyhub_watch_" + item.id, JSON.stringify(item));
     } catch { /* ignore */ }
-    navigate(`/title/${encodeURIComponent(item.id)}`);
+    const route =
+      item.category === "manga" || item.category === "book" ? "read" : "title";
+    navigate(`/${route}/${encodeURIComponent(item.id)}`);
   };
 
   // Restore search on back-nav
