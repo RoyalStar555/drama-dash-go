@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Download, Server, Play, Maximize2, Minimize2 } from "lucide-react";
-import { fetchRelated, fetchTrailerKey, MediaItem, PLACEHOLDER } from "@/lib/api";
+import { fetchRelated, fetchTrailerKey, MediaItem, PLACEHOLDER, DEMO_HLS_URL } from "@/lib/api";
 import { MediaRow } from "@/components/MediaRow";
 import { MyListMenu } from "@/components/MyListMenu";
 import { useMyList } from "@/hooks/useMyList";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { HlsPlayer } from "@/components/HlsPlayer";
 import { cn } from "@/lib/utils";
 
 const SERVERS = [
@@ -227,10 +228,15 @@ const Watch = () => {
                       className="absolute inset-0 h-full w-full"
                     />
                   ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                      <Play className="h-10 w-10 opacity-50" />
-                      <p className="text-sm">No stream available for this title.</p>
-                    </div>
+                    // Fallback: always provide a playable HLS stream so the
+                    // user never sees a blank screen.
+                    <HlsPlayer
+                      key={`${server}-fallback-${activeEpisode}`}
+                      src={item?.videoUrl || DEMO_HLS_URL}
+                      poster={item?.backdrop || item?.poster}
+                      title={item?.title || "Watch"}
+                      className="absolute inset-0 h-full w-full"
+                    />
                   )}
                 </div>
                 {/* Theater Mode button (desktop only — hidden on small) */}

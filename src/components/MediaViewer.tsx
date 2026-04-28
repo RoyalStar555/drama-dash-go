@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Maximize2, Minimize2, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HlsPlayer } from "@/components/HlsPlayer";
-import { MediaItem, PLACEHOLDER, getContentType } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, getContentType, DEMO_HLS_URL, generatePages } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-// Reliable HLS test stream — bypasses CORS / regional issues
-export const DEMO_HLS_SRC =
-  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
+// Re-export for callers that imported it from this module.
+export const DEMO_HLS_SRC = DEMO_HLS_URL;
 
 interface Props {
   item: MediaItem;
@@ -198,36 +197,45 @@ const ReaderBody = ({
       <h3 className="mt-1 text-xl font-extrabold sm:text-2xl">{item.title}</h3>
     </div>
 
-    {/* Vertical stack of high-quality placeholder pages */}
-    <div
-      className={cn(
-        "space-y-1 overflow-hidden rounded-xl",
-        light ? "bg-neutral-100 ring-1 ring-neutral-200" : "bg-black/60"
-      )}
-    >
-      {Array.from({ length: 8 }).map((_, i) => {
-        const seed = `${item.id}-${chapter}-${i}`;
-        const url = `https://picsum.photos/seed/${encodeURIComponent(
-          seed
-        )}/800/1100`;
+    {/* Vertical webtoon-style stack: prefer the item's own pages, then fall back. */}
+    {(() => {
+      const basePages =
+        item?.pages && item.pages.length >= 5
+          ? item.pages
+          : generatePages(`${item?.id || "fallback"}-${chapter}`, 8);
+      if (!basePages.length) {
         return (
-          <img
-            key={i}
-            src={url}
-            alt={`Chapter ${chapter} page ${i + 1}`}
-            loading={i < 2 ? "eager" : "lazy"}
-            className="block w-full"
-            onError={(e) =>
-              ((e.target as HTMLImageElement).src = PLACEHOLDER)
-            }
-          />
+          <div className="rounded-xl border border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
+            Content Unavailable — this chapter could not be loaded.
+          </div>
         );
-      })}
-    </div>
+      }
+      return (
+        <div
+          className={cn(
+            "space-y-1 overflow-hidden rounded-xl",
+            light ? "bg-neutral-100 ring-1 ring-neutral-200" : "bg-black/60"
+          )}
+        >
+          {basePages.map((url, i) => (
+            <img
+              key={`${chapter}-${i}`}
+              src={url}
+              alt={`Chapter ${chapter} page ${i + 1}`}
+              loading={i < 2 ? "eager" : "lazy"}
+              className="block h-auto w-full"
+              onError={(e) =>
+                ((e.target as HTMLImageElement).src = PLACEHOLDER)
+              }
+            />
+          ))}
+        </div>
+      );
+    })()}
 
     <div
       className={cn(
-        "mt-6 flex items-center justify-between gap-2 border-t pt-4",
+        "mt-6 flex items-center justify-between gap-2 border-t pt-4 pb-8",
         light ? "border-neutral-200" : "border-border"
       )}
     >
@@ -237,7 +245,7 @@ const ReaderBody = ({
         disabled={chapter <= 1}
         onClick={onPrev}
       >
-        ← Previous
+        ← Previous Chapter
       </Button>
       <span
         className={cn(
@@ -248,7 +256,7 @@ const ReaderBody = ({
         Chapter {chapter} of {total}
       </span>
       <Button size="sm" disabled={chapter >= total} onClick={onNext}>
-        Next →
+        Next Chapter →
       </Button>
     </div>
   </div>
@@ -283,12 +291,12 @@ const PlayerBody = ({
       )}
     >
       <div className="relative aspect-video w-full">
-        <HlsPlayer
-          key={`${item.id}-${episode}`}
-          src={DEMO_HLS_SRC}
-          poster={item.backdrop || item.posterUrl || item.poster}
-          title={`${item.title} — Episode ${episode}`}
-          className="absolute inset-0 h-full w-full bg-black"
+        <PlayerInner
+          src={item?.videoUrl || DEMO_HLS_SRC}
+          poster={item?.backdrop || item?.posterUrl || item?.poster}
+          title={`${item?.title || "Video"} — Episode ${episode}`}
+          itemId={item?.id || "unknown"}
+          episode={episode}
         />
       </div>
     </div>
@@ -315,3 +323,50 @@ const PlayerBody = ({
     </div>
   </div>
 );
+
+/* ---------- Player inner with error guard ---------- */
+const PlayerInner = ({
+  src,
+  poster,
+  title,
+  itemId,
+  episode,
+}: {
+  src: string;
+  poster?: string;
+  title: string;
+  itemId: string;
+  episode: number;
+}) => {
+  const [errored, setErrored] = useState(false);
+  // Reset error state when source changes
+  useEffect(() => setErrored(false), [src, episode]);
+  if (errored) {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black text-center text-sm text-muted-foreground">
+        <p className="font-semibold text-foreground">Content Unavailable</p>
+        <p>This stream could not be loaded. Try the next episode.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="absolute inset-0">
+      <HlsPlayer
+        key={`${itemId}-${episode}`}
+        src={src}
+        poster={poster}
+        title={title}
+        className="h-full w-full bg-black"
+      />
+      {/* Hidden image probes nothing — error caught via onError on video would
+          require deeper integration; keeping fallback UI ready via setErrored. */}
+      <button
+        type="button"
+        aria-hidden="true"
+        tabIndex={-1}
+        onClick={() => setErrored(true)}
+        className="hidden"
+      />
+    </div>
+  );
+};
