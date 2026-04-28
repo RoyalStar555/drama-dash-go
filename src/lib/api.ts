@@ -3,21 +3,62 @@
 
 export type MediaCategory = "movie" | "drama" | "anime" | "manga" | "book";
 
+// Smart switcher: 'video' opens the HLS player, 'reading' opens the webtoon reader.
+export type ContentType = "video" | "reading";
+
+export interface MediaEpisode {
+  number: number;
+  title: string;
+  runtime?: string;
+}
+
+export interface MediaChapter {
+  number: number;
+  title: string;
+  pages?: number;
+}
+
+export interface VideoMetadata {
+  episodes: MediaEpisode[];
+  studio?: string;
+  duration?: string;
+  status?: string;
+}
+
+export interface ReadingMetadata {
+  chapters: MediaChapter[];
+  author?: string;
+  status?: string;
+}
+
 export interface MediaItem {
   id: string;
   category: MediaCategory;
+  // Aliased pair: `title` is canonical, `description`/`posterUrl` are explicit
+  // names required by the standardized contract.
   title: string;
+  description?: string;
   poster: string;
+  posterUrl?: string;
   backdrop?: string;
   year?: string;
   overview?: string;
   rating?: number;
+  genre?: string[];
+  // Smart switcher fields
+  contentType?: ContentType;
+  metadata?: VideoMetadata | ReadingMetadata;
   // Used for trailer / detail fetching
   tmdbId?: number;
   tmdbType?: "movie" | "tv";
   trailerQuery?: string; // YouTube search fallback
   externalUrl?: string;
 }
+
+// Derive contentType from category when not explicitly set.
+export const getContentType = (item: MediaItem): ContentType =>
+  item.contentType ??
+  (item.category === "manga" || item.category === "book" ? "reading" : "video");
 
 // ---- Config -----------------------------------------------------------------
 // Public TMDB v3 demo key path; users can swap via localStorage `tmdb_key`.
