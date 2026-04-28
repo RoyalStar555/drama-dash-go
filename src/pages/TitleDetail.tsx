@@ -396,7 +396,7 @@ const TitleDetail = () => {
                               cacheWatchItem(r);
                               navigate(`/watch/${encodeURIComponent(r.id)}`);
                             } else {
-                              navigate(`/title/${encodeURIComponent(r.id)}`);
+                              navigate(`/${getContentType(r) === "reading" ? "read" : "title"}/${encodeURIComponent(r.id)}`);
                               setItem(r);
                               window.scrollTo({ top: 0, behavior: "smooth" });
                             }
@@ -455,7 +455,7 @@ const TitleDetail = () => {
                     STORAGE_PREFIX + r.id,
                     JSON.stringify(r)
                   );
-                  navigate(`/title/${encodeURIComponent(r.id)}`);
+                  navigate(`/${getContentType(r) === "reading" ? "read" : "title"}/${encodeURIComponent(r.id)}`);
                   setItem(r);
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }
