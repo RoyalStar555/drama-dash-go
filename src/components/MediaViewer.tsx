@@ -197,36 +197,45 @@ const ReaderBody = ({
       <h3 className="mt-1 text-xl font-extrabold sm:text-2xl">{item.title}</h3>
     </div>
 
-    {/* Vertical stack of high-quality placeholder pages */}
-    <div
-      className={cn(
-        "space-y-1 overflow-hidden rounded-xl",
-        light ? "bg-neutral-100 ring-1 ring-neutral-200" : "bg-black/60"
-      )}
-    >
-      {Array.from({ length: 8 }).map((_, i) => {
-        const seed = `${item.id}-${chapter}-${i}`;
-        const url = `https://picsum.photos/seed/${encodeURIComponent(
-          seed
-        )}/800/1100`;
+    {/* Vertical webtoon-style stack: prefer the item's own pages, then fall back. */}
+    {(() => {
+      const basePages =
+        item?.pages && item.pages.length >= 5
+          ? item.pages
+          : generatePages(`${item?.id || "fallback"}-${chapter}`, 8);
+      if (!basePages.length) {
         return (
-          <img
-            key={i}
-            src={url}
-            alt={`Chapter ${chapter} page ${i + 1}`}
-            loading={i < 2 ? "eager" : "lazy"}
-            className="block w-full"
-            onError={(e) =>
-              ((e.target as HTMLImageElement).src = PLACEHOLDER)
-            }
-          />
+          <div className="rounded-xl border border-border bg-card/40 p-8 text-center text-sm text-muted-foreground">
+            Content Unavailable — this chapter could not be loaded.
+          </div>
         );
-      })}
-    </div>
+      }
+      return (
+        <div
+          className={cn(
+            "space-y-1 overflow-hidden rounded-xl",
+            light ? "bg-neutral-100 ring-1 ring-neutral-200" : "bg-black/60"
+          )}
+        >
+          {basePages.map((url, i) => (
+            <img
+              key={`${chapter}-${i}`}
+              src={url}
+              alt={`Chapter ${chapter} page ${i + 1}`}
+              loading={i < 2 ? "eager" : "lazy"}
+              className="block h-auto w-full"
+              onError={(e) =>
+                ((e.target as HTMLImageElement).src = PLACEHOLDER)
+              }
+            />
+          ))}
+        </div>
+      );
+    })()}
 
     <div
       className={cn(
-        "mt-6 flex items-center justify-between gap-2 border-t pt-4",
+        "mt-6 flex items-center justify-between gap-2 border-t pt-4 pb-8",
         light ? "border-neutral-200" : "border-border"
       )}
     >
@@ -236,7 +245,7 @@ const ReaderBody = ({
         disabled={chapter <= 1}
         onClick={onPrev}
       >
-        ← Previous
+        ← Previous Chapter
       </Button>
       <span
         className={cn(
@@ -247,7 +256,7 @@ const ReaderBody = ({
         Chapter {chapter} of {total}
       </span>
       <Button size="sm" disabled={chapter >= total} onClick={onNext}>
-        Next →
+        Next Chapter →
       </Button>
     </div>
   </div>
