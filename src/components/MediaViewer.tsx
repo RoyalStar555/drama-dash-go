@@ -291,12 +291,12 @@ const PlayerBody = ({
       )}
     >
       <div className="relative aspect-video w-full">
-        <HlsPlayer
-          key={`${item.id}-${episode}`}
-          src={DEMO_HLS_SRC}
-          poster={item.backdrop || item.posterUrl || item.poster}
-          title={`${item.title} — Episode ${episode}`}
-          className="absolute inset-0 h-full w-full bg-black"
+        <PlayerInner
+          src={item?.videoUrl || DEMO_HLS_SRC}
+          poster={item?.backdrop || item?.posterUrl || item?.poster}
+          title={`${item?.title || "Video"} — Episode ${episode}`}
+          itemId={item?.id || "unknown"}
+          episode={episode}
         />
       </div>
     </div>
