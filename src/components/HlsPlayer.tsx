@@ -7,8 +7,6 @@ interface Props {
   autoPlay?: boolean;
   className?: string;
   title?: string;
-  onReady?: () => void;
-  onError?: () => void;
 }
 
 /**
@@ -16,7 +14,6 @@ interface Props {
  * - Safari plays .m3u8 natively.
  * - Other browsers use hls.js.
  * - Calls .play() once metadata is ready (muted to satisfy autoplay rules).
- * - Reports load/error so the parent can show a spinner or "Content Unavailable".
  */
 export const HlsPlayer = ({
   src,
@@ -24,8 +21,6 @@ export const HlsPlayer = ({
   autoPlay = true,
   className,
   title,
-  onReady,
-  onError,
 }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -34,19 +29,8 @@ export const HlsPlayer = ({
     if (!video || !src) return;
 
     let hls: Hls | null = null;
-    let cancelled = false;
-
-    const ready = () => {
-      if (cancelled) return;
-      onReady?.();
-    };
-    const fail = () => {
-      if (cancelled) return;
-      onError?.();
-    };
 
     const tryPlay = () => {
-      ready();
       const p = video.play();
       if (p && typeof p.catch === "function") {
         p.catch(() => {
@@ -57,38 +41,32 @@ export const HlsPlayer = ({
       }
     };
 
-    const onVideoError = () => fail();
-    video.addEventListener("error", onVideoError);
-
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       // Native HLS (Safari, iOS)
       video.src = src;
-      video.addEventListener("loadedmetadata", tryPlay, { once: true });
+      if (autoPlay) {
+        video.addEventListener("loadedmetadata", tryPlay, { once: true });
+      }
     } else if (Hls.isSupported()) {
       hls = new Hls({ enableWorker: true });
       hls.loadSource(src);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (autoPlay) tryPlay();
-        else ready();
-      });
-      hls.on(Hls.Events.ERROR, (_e, data) => {
-        if (data?.fatal) fail();
-      });
+      if (autoPlay) {
+        hls.on(Hls.Events.MANIFEST_PARSED, tryPlay);
+      }
     } else {
       // Last-resort: attempt direct src
       video.src = src;
-      video.addEventListener("loadedmetadata", ready, { once: true });
     }
 
     return () => {
-      cancelled = true;
-      video.removeEventListener("error", onVideoError);
-      if (hls) hls.destroy();
+      if (hls) {
+        hls.destroy();
+      }
       video.removeAttribute("src");
       video.load();
     };
-  }, [src, autoPlay, onReady, onError]);
+  }, [src, autoPlay]);
 
   return (
     <video

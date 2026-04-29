@@ -432,7 +432,6 @@ const TitleDetail = () => {
             currentSelection={activeEp}
             total={totalUnits}
             visible={viewerVisible}
-            watched={watched}
             onClose={closeViewer}
             onSelectionChange={(n) => {
               setActiveEp(n);

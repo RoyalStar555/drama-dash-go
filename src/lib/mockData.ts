@@ -2,7 +2,7 @@
 // Used when external APIs (TMDB / Jikan / Open Library) are unreachable so
 // the home page always feels full and professional.
 
-import { MediaItem, PLACEHOLDER, DEMO_HLS_URL, generatePages } from "./api";
+import { MediaItem, PLACEHOLDER } from "./api";
 
 const tmdbImg = (path: string) => `https://image.tmdb.org/t/p/w500${path}`;
 const tmdbBackdrop = (path: string) =>
@@ -351,35 +351,7 @@ export const MOCK_BY_CATEGORY = {
   book: MOCK_BOOKS,
 } as const;
 
-// Normalize every mock item: ensure poster, contentType, and either
-// videoUrl (for video) or a `pages` array (for reading) exist. This guarantees
-// no blank screens when the user clicks Watch/Read.
-for (const [cat, list] of Object.entries(MOCK_BY_CATEGORY)) {
-  for (const it of list) {
-    if (!it.poster) it.poster = PLACEHOLDER;
-    if (!it.posterUrl) it.posterUrl = it.poster;
-    const isReading = cat === "manga" || cat === "book";
-    if (!it.contentType) it.contentType = isReading ? "reading" : "video";
-    if (!it.mediaType) it.mediaType = it.contentType;
-    if (it.contentType === "video") {
-      if (!it.videoUrl) it.videoUrl = DEMO_HLS_URL;
-      if (!it.episodes || it.episodes.length === 0) {
-        it.episodes = Array.from({ length: 12 }).map((_, i) => ({
-          number: i + 1,
-          title: `Episode ${i + 1}`,
-          videoUrl: it.videoUrl || DEMO_HLS_URL,
-        }));
-      }
-    }
-    if (it.contentType === "reading") {
-      if (!it.pages || it.pages.length < 5) it.pages = generatePages(it.id, 8);
-      if (!it.chapters || it.chapters.length === 0) {
-        it.chapters = Array.from({ length: 24 }).map((_, i) => ({
-          number: i + 1,
-          title: `Chapter ${i + 1}`,
-          pages: generatePages(`${it.id}-ch${i + 1}`, 8),
-        }));
-      }
-    }
-  }
+// Ensure poster fallback safety
+for (const list of Object.values(MOCK_BY_CATEGORY)) {
+  for (const it of list) if (!it.poster) it.poster = PLACEHOLDER;
 }

@@ -10,15 +10,12 @@ export interface MediaEpisode {
   number: number;
   title: string;
   runtime?: string;
-  /** Direct HLS / mp4 URL for this episode. Falls back to DEMO_HLS_URL. */
-  videoUrl: string;
 }
 
 export interface MediaChapter {
   number: number;
   title: string;
-  /** Page image URLs rendered in the webtoon reader. */
-  pages: string[];
+  pages?: number;
 }
 
 export interface VideoMetadata {
@@ -37,8 +34,6 @@ export interface ReadingMetadata {
 export interface MediaItem {
   id: string;
   category: MediaCategory;
-  /** Strict media type — 'video' for Movies/Dramas/Anime, 'reading' for Manga/Books. */
-  mediaType?: ContentType;
   // Aliased pair: `title` is canonical, `description`/`posterUrl` are explicit
   // names required by the standardized contract.
   title: string;
@@ -53,31 +48,12 @@ export interface MediaItem {
   // Smart switcher fields
   contentType?: ContentType;
   metadata?: VideoMetadata | ReadingMetadata;
-  /** Strict episodes array (videos). Each entry includes a videoUrl. */
-  episodes?: MediaEpisode[];
-  /** Strict chapters array (reading). Each entry includes a pages[] array. */
-  chapters?: MediaChapter[];
-  // Direct video stream (HLS) — falls back to DEMO_HLS when missing
-  videoUrl?: string;
-  // Reading content pages (URLs to high-quality images, webtoon-style)
-  pages?: string[];
   // Used for trailer / detail fetching
   tmdbId?: number;
   tmdbType?: "movie" | "tv";
   trailerQuery?: string; // YouTube search fallback
   externalUrl?: string;
 }
-
-// Reliable HLS demo stream — used as universal fallback for video items.
-export const DEMO_HLS_URL =
-  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
-
-// Generate deterministic high-quality reader pages for any item id.
-export const generatePages = (seed: string, count = 8): string[] =>
-  Array.from({ length: count }).map(
-    (_, i) =>
-      `https://picsum.photos/seed/${encodeURIComponent(`${seed}-${i}`)}/800/1100`
-  );
 
 // Derive contentType from category when not explicitly set.
 export const getContentType = (item: MediaItem): ContentType =>
@@ -221,45 +197,14 @@ function mapOL(d: OLResp["docs"] = []): MediaItem[] {
 // ---- Public API -------------------------------------------------------------
 import { MOCK_BY_CATEGORY } from "./mockData";
 
-// Ensure every item has the playback fields the viewer needs.
-export function normalizeItem(item: MediaItem): MediaItem {
-  const contentType = getContentType(item);
-  const next: MediaItem = { ...item, contentType, mediaType: contentType };
-  if (!next.posterUrl) next.posterUrl = next.poster;
-  if (contentType === "video") {
-    if (!next.videoUrl) next.videoUrl = DEMO_HLS_URL;
-    if (!next.episodes || next.episodes.length === 0) {
-      next.episodes = Array.from({ length: 12 }).map((_, i) => ({
-        number: i + 1,
-        title: `Episode ${i + 1}`,
-        videoUrl: next.videoUrl || DEMO_HLS_URL,
-      }));
-    }
-  }
-  if (contentType === "reading") {
-    if (!next.pages || next.pages.length < 5) {
-      next.pages = generatePages(next.id, 8);
-    }
-    if (!next.chapters || next.chapters.length === 0) {
-      next.chapters = Array.from({ length: 24 }).map((_, i) => ({
-        number: i + 1,
-        title: `Chapter ${i + 1}`,
-        pages: generatePages(`${next.id}-ch${i + 1}`, 8),
-      }));
-    }
-  }
-  return next;
-}
-
 // Always merge mock items so categories never appear empty.
 function withFallback(items: MediaItem[], category: MediaCategory): MediaItem[] {
   const mocks = MOCK_BY_CATEGORY[category] || [];
-  const normalized = items.map(normalizeItem);
-  if (normalized.length >= 5) return normalized;
+  if (items.length >= 5) return items;
   // Append mocks that aren't already present (by title) until we have plenty.
-  const seen = new Set(normalized.map((i) => i.title.toLowerCase()));
+  const seen = new Set(items.map((i) => i.title.toLowerCase()));
   const extras = mocks.filter((m) => !seen.has(m.title.toLowerCase()));
-  return [...normalized, ...extras];
+  return [...items, ...extras];
 }
 
 export async function fetchTrending(
