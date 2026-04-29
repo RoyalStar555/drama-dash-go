@@ -360,9 +360,26 @@ for (const [cat, list] of Object.entries(MOCK_BY_CATEGORY)) {
     if (!it.posterUrl) it.posterUrl = it.poster;
     const isReading = cat === "manga" || cat === "book";
     if (!it.contentType) it.contentType = isReading ? "reading" : "video";
-    if (it.contentType === "video" && !it.videoUrl) it.videoUrl = DEMO_HLS_URL;
-    if (it.contentType === "reading" && (!it.pages || it.pages.length < 5)) {
-      it.pages = generatePages(it.id, 8);
+    if (!it.mediaType) it.mediaType = it.contentType;
+    if (it.contentType === "video") {
+      if (!it.videoUrl) it.videoUrl = DEMO_HLS_URL;
+      if (!it.episodes || it.episodes.length === 0) {
+        it.episodes = Array.from({ length: 12 }).map((_, i) => ({
+          number: i + 1,
+          title: `Episode ${i + 1}`,
+          videoUrl: it.videoUrl || DEMO_HLS_URL,
+        }));
+      }
+    }
+    if (it.contentType === "reading") {
+      if (!it.pages || it.pages.length < 5) it.pages = generatePages(it.id, 8);
+      if (!it.chapters || it.chapters.length === 0) {
+        it.chapters = Array.from({ length: 24 }).map((_, i) => ({
+          number: i + 1,
+          title: `Chapter ${i + 1}`,
+          pages: generatePages(`${it.id}-ch${i + 1}`, 8),
+        }));
+      }
     }
   }
 }
