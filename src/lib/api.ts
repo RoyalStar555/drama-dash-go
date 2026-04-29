@@ -37,6 +37,8 @@ export interface ReadingMetadata {
 export interface MediaItem {
   id: string;
   category: MediaCategory;
+  /** Strict media type — 'video' for Movies/Dramas/Anime, 'reading' for Manga/Books. */
+  mediaType?: ContentType;
   // Aliased pair: `title` is canonical, `description`/`posterUrl` are explicit
   // names required by the standardized contract.
   title: string;
@@ -51,6 +53,10 @@ export interface MediaItem {
   // Smart switcher fields
   contentType?: ContentType;
   metadata?: VideoMetadata | ReadingMetadata;
+  /** Strict episodes array (videos). Each entry includes a videoUrl. */
+  episodes?: MediaEpisode[];
+  /** Strict chapters array (reading). Each entry includes a pages[] array. */
+  chapters?: MediaChapter[];
   // Direct video stream (HLS) — falls back to DEMO_HLS when missing
   videoUrl?: string;
   // Reading content pages (URLs to high-quality images, webtoon-style)
