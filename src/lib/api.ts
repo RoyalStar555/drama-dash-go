@@ -224,14 +224,29 @@ import { MOCK_BY_CATEGORY } from "./mockData";
 // Ensure every item has the playback fields the viewer needs.
 export function normalizeItem(item: MediaItem): MediaItem {
   const contentType = getContentType(item);
-  const next: MediaItem = { ...item, contentType };
+  const next: MediaItem = { ...item, contentType, mediaType: contentType };
   if (!next.posterUrl) next.posterUrl = next.poster;
-  if (contentType === "video" && !next.videoUrl) next.videoUrl = DEMO_HLS_URL;
-  if (
-    contentType === "reading" &&
-    (!next.pages || next.pages.length < 5)
-  ) {
-    next.pages = generatePages(next.id, 8);
+  if (contentType === "video") {
+    if (!next.videoUrl) next.videoUrl = DEMO_HLS_URL;
+    if (!next.episodes || next.episodes.length === 0) {
+      next.episodes = Array.from({ length: 12 }).map((_, i) => ({
+        number: i + 1,
+        title: `Episode ${i + 1}`,
+        videoUrl: next.videoUrl || DEMO_HLS_URL,
+      }));
+    }
+  }
+  if (contentType === "reading") {
+    if (!next.pages || next.pages.length < 5) {
+      next.pages = generatePages(next.id, 8);
+    }
+    if (!next.chapters || next.chapters.length === 0) {
+      next.chapters = Array.from({ length: 24 }).map((_, i) => ({
+        number: i + 1,
+        title: `Chapter ${i + 1}`,
+        pages: generatePages(`${next.id}-ch${i + 1}`, 8),
+      }));
+    }
   }
   return next;
 }
