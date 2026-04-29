@@ -10,12 +10,15 @@ export interface MediaEpisode {
   number: number;
   title: string;
   runtime?: string;
+  /** Direct HLS / mp4 URL for this episode. Falls back to DEMO_HLS_URL. */
+  videoUrl: string;
 }
 
 export interface MediaChapter {
   number: number;
   title: string;
-  pages?: number;
+  /** Page image URLs rendered in the webtoon reader. */
+  pages: string[];
 }
 
 export interface VideoMetadata {
