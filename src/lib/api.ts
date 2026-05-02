@@ -79,10 +79,23 @@ export const PLACEHOLDER =
   );
 
 // ---- Fetch helpers ----------------------------------------------------------
+export class RateLimitError extends Error {
+  status = 429;
+  constructor(url: string) {
+    super(`Rate limited (429): ${url}`);
+    this.name = "RateLimitError";
+  }
+}
+
 async function safeJson<T>(url: string, useProxy = false): Promise<T | null> {
+  const res = await fetch(useProxy ? proxied(url) : url);
+  if (res.status === 429) {
+    // Surface so React Query treats it as a failure (retry / error UI)
+    // instead of silently caching an empty result.
+    throw new RateLimitError(url);
+  }
+  if (!res.ok) return null;
   try {
-    const res = await fetch(useProxy ? proxied(url) : url);
-    if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
     return null;
