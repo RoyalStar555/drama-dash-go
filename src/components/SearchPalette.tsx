@@ -51,7 +51,7 @@ export const SearchPalette = ({ onSelect, initialQuery = "", onQueryChange }: Pr
     staleTime: 1000 * 60 * 5,
   });
 
-  const results = data.slice(0, 8);
+  const results = rankAndDedupe(data, debounced).slice(0, 8);
   const showDropdown = open && debounced.length > 1;
 
   const pick = (it: MediaItem) => {
