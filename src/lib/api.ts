@@ -311,7 +311,9 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
   if (!query.trim()) return [];
   const q = encodeURIComponent(query);
 
-  const [movie, tv, anime, manga, books] = await Promise.all([
+  // Use allSettled so one rate-limited provider (e.g. Jikan 429) doesn't
+  // wipe out results from the other four.
+  const settled = await Promise.allSettled([
     tmdb<TmdbResult>("/search/movie", { query }),
     tmdb<TmdbResult>("/search/tv", { query }),
     safeJson<JikanResp>(`https://api.jikan.moe/v4/anime?q=${q}&limit=10`),
@@ -319,13 +321,33 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
     safeJson<OLResp>(`https://openlibrary.org/search.json?q=${q}&limit=10`),
   ]);
 
-  return [
+  const val = <T,>(i: number): T | null =>
+    settled[i].status === "fulfilled"
+      ? ((settled[i] as PromiseFulfilledResult<T | null>).value ?? null)
+      : null;
+
+  const movie = val<TmdbResult>(0);
+  const tv = val<TmdbResult>(1);
+  const anime = val<JikanResp>(2);
+  const manga = val<JikanResp>(3);
+  const books = val<OLResp>(4);
+
+  // De-duplicate across providers by (category + normalized title + year).
+  const out: MediaItem[] = [
     ...mapTmdb(movie?.results, "movie", "movie"),
     ...mapTmdb(tv?.results, "tv", "drama"),
     ...mapJikan(anime?.data, "anime"),
     ...mapJikan(manga?.data, "manga"),
     ...mapOL(books?.docs),
   ];
+
+  const seen = new Set<string>();
+  return out.filter((it) => {
+    const key = `${it.category}::${it.title.toLowerCase().replace(/[^a-z0-9]/g, "")}::${it.year || ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // ---- Trailer (YouTube) ------------------------------------------------------
