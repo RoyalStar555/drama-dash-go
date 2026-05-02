@@ -40,8 +40,8 @@ export const SearchPalette = ({ onSelect, initialQuery = "", onQueryChange }: Pr
     const onClick = (e: MouseEvent) => {
       if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
   }, []);
 
   const { data = [], isFetching } = useQuery({
