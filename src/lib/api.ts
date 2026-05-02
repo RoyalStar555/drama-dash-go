@@ -168,22 +168,28 @@ function mapJikan(
   d: JikanResp["data"] = [],
   category: "anime" | "manga"
 ): MediaItem[] {
-  return d.map((r) => ({
-    id: `jikan-${category}-${r.mal_id}`,
-    category,
-    title: r.title_english || r.title,
-    poster:
+  return d.map((r) => {
+    const poster =
       r.images?.jpg?.large_image_url ||
       r.images?.jpg?.image_url ||
-      PLACEHOLDER,
-    year: (r.aired?.from || r.published?.from || "").slice(0, 4),
-    overview: r.synopsis,
-    rating: r.score,
-    trailerQuery: r.trailer?.youtube_id
-      ? r.trailer.youtube_id
-      : `${r.title} ${category} trailer`,
-    externalUrl: r.url,
-  }));
+      PLACEHOLDER;
+    return {
+      id: `jikan-${category}-${r.mal_id}`,
+      category,
+      title: r.title_english || r.title,
+      description: r.synopsis,
+      poster,
+      posterUrl: poster,
+      year: (r.aired?.from || r.published?.from || "").slice(0, 4),
+      overview: r.synopsis,
+      rating: r.score,
+      contentType: category === "manga" ? ("reading" as const) : ("video" as const),
+      trailerQuery: r.trailer?.youtube_id
+        ? r.trailer.youtube_id
+        : `${r.title} ${category} trailer`,
+      externalUrl: r.url,
+    };
+  });
 }
 
 // ---- Open Library (Books) ---------------------------------------------------
