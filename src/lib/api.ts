@@ -205,18 +205,25 @@ interface OLResp {
 }
 
 function mapOL(d: OLResp["docs"] = []): MediaItem[] {
-  return d.map((r) => ({
-    id: `ol-${r.key}`,
-    category: "book" as const,
-    title: r.title,
-    poster: r.cover_i
+  return d.map((r) => {
+    const poster = r.cover_i
       ? `https://covers.openlibrary.org/b/id/${r.cover_i}-L.jpg`
-      : PLACEHOLDER,
-    year: r.first_publish_year ? String(r.first_publish_year) : undefined,
-    overview: r.author_name ? `By ${r.author_name.join(", ")}` : undefined,
-    trailerQuery: `${r.title} book review`,
-    externalUrl: `https://openlibrary.org${r.key}`,
-  }));
+      : PLACEHOLDER;
+    const desc = r.author_name ? `By ${r.author_name.join(", ")}` : undefined;
+    return {
+      id: `ol-${r.key}`,
+      category: "book" as const,
+      title: r.title,
+      description: desc,
+      poster,
+      posterUrl: poster,
+      year: r.first_publish_year ? String(r.first_publish_year) : undefined,
+      overview: desc,
+      contentType: "reading" as const,
+      trailerQuery: `${r.title} book review`,
+      externalUrl: `https://openlibrary.org${r.key}`,
+    };
+  });
 }
 
 // ---- Public API -------------------------------------------------------------
