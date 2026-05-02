@@ -79,10 +79,23 @@ export const PLACEHOLDER =
   );
 
 // ---- Fetch helpers ----------------------------------------------------------
+export class RateLimitError extends Error {
+  status = 429;
+  constructor(url: string) {
+    super(`Rate limited (429): ${url}`);
+    this.name = "RateLimitError";
+  }
+}
+
 async function safeJson<T>(url: string, useProxy = false): Promise<T | null> {
+  const res = await fetch(useProxy ? proxied(url) : url);
+  if (res.status === 429) {
+    // Surface so React Query treats it as a failure (retry / error UI)
+    // instead of silently caching an empty result.
+    throw new RateLimitError(url);
+  }
+  if (!res.ok) return null;
   try {
-    const res = await fetch(useProxy ? proxied(url) : url);
-    if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
     return null;
@@ -115,18 +128,24 @@ function mapTmdb(
   type: "movie" | "tv",
   category: MediaCategory
 ): MediaItem[] {
-  return results.map((r) => ({
-    id: `tmdb-${type}-${r.id}`,
-    category,
-    title: r.title || r.name || "Untitled",
-    poster: r.poster_path ? `${TMDB_IMG}${r.poster_path}` : PLACEHOLDER,
-    backdrop: r.backdrop_path ? `${TMDB_BACKDROP}${r.backdrop_path}` : undefined,
-    year: (r.release_date || r.first_air_date || "").slice(0, 4),
-    overview: r.overview,
-    rating: r.vote_average,
-    tmdbId: r.id,
-    tmdbType: type,
-  }));
+  return results.map((r) => {
+    const poster = r.poster_path ? `${TMDB_IMG}${r.poster_path}` : PLACEHOLDER;
+    return {
+      id: `tmdb-${type}-${r.id}`,
+      category,
+      title: r.title || r.name || "Untitled",
+      description: r.overview,
+      poster,
+      posterUrl: poster,
+      backdrop: r.backdrop_path ? `${TMDB_BACKDROP}${r.backdrop_path}` : undefined,
+      year: (r.release_date || r.first_air_date || "").slice(0, 4),
+      overview: r.overview,
+      rating: r.vote_average,
+      contentType: "video" as const,
+      tmdbId: r.id,
+      tmdbType: type,
+    };
+  });
 }
 
 // ---- Jikan (Anime + Manga) --------------------------------------------------
@@ -149,22 +168,28 @@ function mapJikan(
   d: JikanResp["data"] = [],
   category: "anime" | "manga"
 ): MediaItem[] {
-  return d.map((r) => ({
-    id: `jikan-${category}-${r.mal_id}`,
-    category,
-    title: r.title_english || r.title,
-    poster:
+  return d.map((r) => {
+    const poster =
       r.images?.jpg?.large_image_url ||
       r.images?.jpg?.image_url ||
-      PLACEHOLDER,
-    year: (r.aired?.from || r.published?.from || "").slice(0, 4),
-    overview: r.synopsis,
-    rating: r.score,
-    trailerQuery: r.trailer?.youtube_id
-      ? r.trailer.youtube_id
-      : `${r.title} ${category} trailer`,
-    externalUrl: r.url,
-  }));
+      PLACEHOLDER;
+    return {
+      id: `jikan-${category}-${r.mal_id}`,
+      category,
+      title: r.title_english || r.title,
+      description: r.synopsis,
+      poster,
+      posterUrl: poster,
+      year: (r.aired?.from || r.published?.from || "").slice(0, 4),
+      overview: r.synopsis,
+      rating: r.score,
+      contentType: category === "manga" ? ("reading" as const) : ("video" as const),
+      trailerQuery: r.trailer?.youtube_id
+        ? r.trailer.youtube_id
+        : `${r.title} ${category} trailer`,
+      externalUrl: r.url,
+    };
+  });
 }
 
 // ---- Open Library (Books) ---------------------------------------------------
@@ -180,18 +205,25 @@ interface OLResp {
 }
 
 function mapOL(d: OLResp["docs"] = []): MediaItem[] {
-  return d.map((r) => ({
-    id: `ol-${r.key}`,
-    category: "book" as const,
-    title: r.title,
-    poster: r.cover_i
+  return d.map((r) => {
+    const poster = r.cover_i
       ? `https://covers.openlibrary.org/b/id/${r.cover_i}-L.jpg`
-      : PLACEHOLDER,
-    year: r.first_publish_year ? String(r.first_publish_year) : undefined,
-    overview: r.author_name ? `By ${r.author_name.join(", ")}` : undefined,
-    trailerQuery: `${r.title} book review`,
-    externalUrl: `https://openlibrary.org${r.key}`,
-  }));
+      : PLACEHOLDER;
+    const desc = r.author_name ? `By ${r.author_name.join(", ")}` : undefined;
+    return {
+      id: `ol-${r.key}`,
+      category: "book" as const,
+      title: r.title,
+      description: desc,
+      poster,
+      posterUrl: poster,
+      year: r.first_publish_year ? String(r.first_publish_year) : undefined,
+      overview: desc,
+      contentType: "reading" as const,
+      trailerQuery: `${r.title} book review`,
+      externalUrl: `https://openlibrary.org${r.key}`,
+    };
+  });
 }
 
 // ---- Public API -------------------------------------------------------------
@@ -279,7 +311,9 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
   if (!query.trim()) return [];
   const q = encodeURIComponent(query);
 
-  const [movie, tv, anime, manga, books] = await Promise.all([
+  // Use allSettled so one rate-limited provider (e.g. Jikan 429) doesn't
+  // wipe out results from the other four.
+  const settled = await Promise.allSettled([
     tmdb<TmdbResult>("/search/movie", { query }),
     tmdb<TmdbResult>("/search/tv", { query }),
     safeJson<JikanResp>(`https://api.jikan.moe/v4/anime?q=${q}&limit=10`),
@@ -287,13 +321,33 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
     safeJson<OLResp>(`https://openlibrary.org/search.json?q=${q}&limit=10`),
   ]);
 
-  return [
+  const val = <T,>(i: number): T | null =>
+    settled[i].status === "fulfilled"
+      ? ((settled[i] as PromiseFulfilledResult<T | null>).value ?? null)
+      : null;
+
+  const movie = val<TmdbResult>(0);
+  const tv = val<TmdbResult>(1);
+  const anime = val<JikanResp>(2);
+  const manga = val<JikanResp>(3);
+  const books = val<OLResp>(4);
+
+  // De-duplicate across providers by (category + normalized title + year).
+  const out: MediaItem[] = [
     ...mapTmdb(movie?.results, "movie", "movie"),
     ...mapTmdb(tv?.results, "tv", "drama"),
     ...mapJikan(anime?.data, "anime"),
     ...mapJikan(manga?.data, "manga"),
     ...mapOL(books?.docs),
   ];
+
+  const seen = new Set<string>();
+  return out.filter((it) => {
+    const key = `${it.category}::${it.title.toLowerCase().replace(/[^a-z0-9]/g, "")}::${it.year || ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 // ---- Trailer (YouTube) ------------------------------------------------------

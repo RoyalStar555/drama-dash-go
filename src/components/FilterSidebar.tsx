@@ -92,10 +92,12 @@ export const FilterSidebar = ({ open, filters, onChange, onClose }: Props) => {
       />
       <aside
         aria-label="Filters"
+        aria-hidden={!open}
+        style={{ ["--dvh" as string]: "100dvh" }}
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen w-[300px] border-r border-border bg-card/95 backdrop-blur-md transition-transform duration-300",
-          "lg:sticky lg:top-[57px] lg:z-20 lg:h-[calc(100vh-57px)] lg:translate-x-0 lg:bg-card/40",
-          open ? "translate-x-0" : "-translate-x-full"
+          "fixed left-0 top-0 z-50 w-[300px] border-r border-border bg-card/95 backdrop-blur-md transition-transform duration-300 h-[100dvh]",
+          "lg:sticky lg:top-[57px] lg:z-20 lg:h-[calc(100dvh-57px)] lg:translate-x-0 lg:bg-card/40",
+          open ? "translate-x-0" : "-translate-x-full pointer-events-none lg:pointer-events-auto"
         )}
       >
         <div className="flex h-full flex-col">

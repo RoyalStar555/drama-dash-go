@@ -55,10 +55,12 @@ export const MediaViewer = ({
     <div
       className={cn(
         "fixed inset-0 z-50 flex flex-col backdrop-blur-sm transition-opacity duration-300",
-        visible ? "opacity-100" : "opacity-0",
+        visible ? "opacity-100" : "pointer-events-none opacity-0",
         // Reader light mode flips the entire surface
         isReading && readerLight ? "bg-white/95" : "bg-background/95"
       )}
+      style={{ height: "100dvh" }}
+      aria-hidden={!visible}
       role="dialog"
       aria-modal="true"
       aria-label={isReading ? "Reader view" : "Video player"}
