@@ -128,18 +128,24 @@ function mapTmdb(
   type: "movie" | "tv",
   category: MediaCategory
 ): MediaItem[] {
-  return results.map((r) => ({
-    id: `tmdb-${type}-${r.id}`,
-    category,
-    title: r.title || r.name || "Untitled",
-    poster: r.poster_path ? `${TMDB_IMG}${r.poster_path}` : PLACEHOLDER,
-    backdrop: r.backdrop_path ? `${TMDB_BACKDROP}${r.backdrop_path}` : undefined,
-    year: (r.release_date || r.first_air_date || "").slice(0, 4),
-    overview: r.overview,
-    rating: r.vote_average,
-    tmdbId: r.id,
-    tmdbType: type,
-  }));
+  return results.map((r) => {
+    const poster = r.poster_path ? `${TMDB_IMG}${r.poster_path}` : PLACEHOLDER;
+    return {
+      id: `tmdb-${type}-${r.id}`,
+      category,
+      title: r.title || r.name || "Untitled",
+      description: r.overview,
+      poster,
+      posterUrl: poster,
+      backdrop: r.backdrop_path ? `${TMDB_BACKDROP}${r.backdrop_path}` : undefined,
+      year: (r.release_date || r.first_air_date || "").slice(0, 4),
+      overview: r.overview,
+      rating: r.vote_average,
+      contentType: "video" as const,
+      tmdbId: r.id,
+      tmdbType: type,
+    };
+  });
 }
 
 // ---- Jikan (Anime + Manga) --------------------------------------------------
