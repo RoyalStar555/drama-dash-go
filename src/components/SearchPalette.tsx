@@ -16,6 +16,47 @@ const CATEGORY_LABELS: Record<MediaCategory, string> = {
   book: "Book",
 };
 
+// ---- Fuzzy matching (lightweight, dependency-free) ----
+const norm = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+
+function fuzzyScore(query: string, target: string): number {
+  const q = norm(query);
+  const t = norm(target);
+  if (!q || !t) return 0;
+  if (t === q) return 1000;
+  if (t.startsWith(q)) return 800;
+  if (t.includes(q)) return 600;
+  // Subsequence + token overlap
+  let qi = 0;
+  for (let i = 0; i < t.length && qi < q.length; i++) {
+    if (t[i] === q[qi]) qi++;
+  }
+  const subseq = qi === q.length ? 200 : 0;
+  const qTokens = q.split(/\s+/).filter(Boolean);
+  const tTokens = new Set(t.split(/\s+/).filter(Boolean));
+  const overlap = qTokens.filter((tok) => tTokens.has(tok)).length;
+  // Tiny Levenshtein-ish: count matching chars within window
+  let common = 0;
+  for (const ch of new Set(q)) if (t.includes(ch)) common++;
+  return subseq + overlap * 50 + common * 4;
+}
+
+function rankAndDedupe(items: MediaItem[], query: string): MediaItem[] {
+  const seen = new Map<string, MediaItem>();
+  for (const it of items) {
+    const key = `${it.category}::${norm(it.title)}::${it.year || ""}`;
+    if (!seen.has(key)) seen.set(key, it);
+  }
+  const list = Array.from(seen.values());
+  if (!query.trim()) return list;
+  return list
+    .map((it) => ({ it, s: fuzzyScore(query, it.title) }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+    .map((x) => x.it);
+}
+
 interface Props {
   onSelect: (item: MediaItem) => void;
   initialQuery?: string;
