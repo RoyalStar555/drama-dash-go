@@ -26,10 +26,23 @@ const subDubLabel = (cat: string) => {
   return null;
 };
 
+// Generate a srcset for TMDB images so XL/Retina monitors don't pixelate.
+const buildSrcSet = (src: string): string | undefined => {
+  if (!src.includes("image.tmdb.org/t/p/")) return undefined;
+  const base = src.replace(/\/t\/p\/w\d+\//, "/t/p/");
+  return [
+    `${base.replace("/t/p/", "/t/p/w342/")} 342w`,
+    `${base.replace("/t/p/", "/t/p/w500/")} 500w`,
+    `${base.replace("/t/p/", "/t/p/w780/")} 780w`,
+  ].join(", ");
+};
+
 export const MediaCard = ({ item, onClick }: Props) => {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
   const subDub = subDubLabel(item.category);
+  const imgSrc = errored ? PLACEHOLDER : item.poster;
+  const srcSet = errored ? undefined : buildSrcSet(item.poster);
 
   return (
     <div
@@ -44,7 +57,9 @@ export const MediaCard = ({ item, onClick }: Props) => {
         <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted">
           {!loaded && <Skeleton className="absolute inset-0 rounded-none" />}
           <img
-            src={errored ? PLACEHOLDER : item.poster}
+            src={imgSrc}
+            srcSet={srcSet}
+            sizes="(min-width: 1280px) 12rem, (min-width: 640px) 11rem, 9rem"
             alt={item.title}
             loading="lazy"
             onLoad={() => setLoaded(true)}
