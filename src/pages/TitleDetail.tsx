@@ -455,9 +455,8 @@ const TitleDetail = () => {
                     STORAGE_PREFIX + r.id,
                     JSON.stringify(r)
                   );
+                  // Navigate only; avoid setState after unmount.
                   navigate(`/${getContentType(r) === "reading" ? "read" : "title"}/${encodeURIComponent(r.id)}`);
-                  setItem(r);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
                 }
               }}
             />
