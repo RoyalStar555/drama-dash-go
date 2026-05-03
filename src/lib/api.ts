@@ -113,13 +113,16 @@ interface TmdbResult {
   results?: Array<{
     id: number;
     title?: string;
+    original_title?: string;
     name?: string;
+    original_name?: string;
     poster_path?: string | null;
     backdrop_path?: string | null;
     release_date?: string;
     first_air_date?: string;
     overview?: string;
     vote_average?: number;
+    original_language?: string;
   }>;
 }
 
@@ -130,10 +133,12 @@ function mapTmdb(
 ): MediaItem[] {
   return results.map((r) => {
     const poster = r.poster_path ? `${TMDB_IMG}${r.poster_path}` : PLACEHOLDER;
+    const title =
+      r.title || r.name || r.original_title || r.original_name || "Untitled";
     return {
       id: `tmdb-${type}-${r.id}`,
       category,
-      title: r.title || r.name || "Untitled",
+      title,
       description: r.overview,
       poster,
       posterUrl: poster,
