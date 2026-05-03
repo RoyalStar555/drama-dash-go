@@ -215,8 +215,8 @@ const Index = () => {
                 key={row.key}
                 id={`section-${row.key}`}
                 title={row.label}
-                items={row.items}
-                loading={row.loading}
+                items={initialLoading ? [] : row.items}
+                loading={initialLoading || row.loading}
                 onSelect={handleSelect}
               />
             ) : null
