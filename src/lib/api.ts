@@ -113,13 +113,16 @@ interface TmdbResult {
   results?: Array<{
     id: number;
     title?: string;
+    original_title?: string;
     name?: string;
+    original_name?: string;
     poster_path?: string | null;
     backdrop_path?: string | null;
     release_date?: string;
     first_air_date?: string;
     overview?: string;
     vote_average?: number;
+    original_language?: string;
   }>;
 }
 
@@ -130,10 +133,12 @@ function mapTmdb(
 ): MediaItem[] {
   return results.map((r) => {
     const poster = r.poster_path ? `${TMDB_IMG}${r.poster_path}` : PLACEHOLDER;
+    const title =
+      r.title || r.name || r.original_title || r.original_name || "Untitled";
     return {
       id: `tmdb-${type}-${r.id}`,
       category,
-      title: r.title || r.name || "Untitled",
+      title,
       description: r.overview,
       poster,
       posterUrl: poster,
@@ -312,10 +317,13 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
   const q = encodeURIComponent(query);
 
   // Use allSettled so one rate-limited provider (e.g. Jikan 429) doesn't
-  // wipe out results from the other four.
+  // wipe out results from the other four. We also fan out TMDB twice — once
+  // global and once with region=IN — to surface Indian / regional titles.
   const settled = await Promise.allSettled([
-    tmdb<TmdbResult>("/search/movie", { query }),
-    tmdb<TmdbResult>("/search/tv", { query }),
+    tmdb<TmdbResult>("/search/movie", { query, include_adult: "false" }),
+    tmdb<TmdbResult>("/search/tv", { query, include_adult: "false" }),
+    tmdb<TmdbResult>("/search/movie", { query, region: "IN", include_adult: "false" }),
+    tmdb<TmdbResult>("/search/tv", { query, region: "IN", include_adult: "false" }),
     safeJson<JikanResp>(`https://api.jikan.moe/v4/anime?q=${q}&limit=10`),
     safeJson<JikanResp>(`https://api.jikan.moe/v4/manga?q=${q}&limit=10`),
     safeJson<OLResp>(`https://openlibrary.org/search.json?q=${q}&limit=10`),
@@ -328,14 +336,18 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
 
   const movie = val<TmdbResult>(0);
   const tv = val<TmdbResult>(1);
-  const anime = val<JikanResp>(2);
-  const manga = val<JikanResp>(3);
-  const books = val<OLResp>(4);
+  const movieIn = val<TmdbResult>(2);
+  const tvIn = val<TmdbResult>(3);
+  const anime = val<JikanResp>(4);
+  const manga = val<JikanResp>(5);
+  const books = val<OLResp>(6);
 
   // De-duplicate across providers by (category + normalized title + year).
   const out: MediaItem[] = [
     ...mapTmdb(movie?.results, "movie", "movie"),
+    ...mapTmdb(movieIn?.results, "movie", "movie"),
     ...mapTmdb(tv?.results, "tv", "drama"),
+    ...mapTmdb(tvIn?.results, "tv", "drama"),
     ...mapJikan(anime?.data, "anime"),
     ...mapJikan(manga?.data, "manga"),
     ...mapOL(books?.docs),
