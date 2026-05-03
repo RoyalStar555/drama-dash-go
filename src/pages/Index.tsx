@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { SlidersHorizontal, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MediaRow } from "@/components/MediaRow";
@@ -79,19 +79,25 @@ const Index = () => {
     sessionStorage.setItem("storyhub_query", query);
   }, [query]);
 
-  const rowQueries = ROWS.map((r) =>
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useQuery({
+  // Single hook call (no Rules-of-Hooks violation, no per-render array)
+  const rowQueries = useQueries({
+    queries: ROWS.map((r) => ({
       queryKey: ["row", r.key],
       queryFn: () =>
         r.source === "trending"
           ? fetchTrending(r.category)
           : fetchSecondary(r.category),
       staleTime: 1000 * 60 * 10,
-    })
-  );
+    })),
+  });
 
-  // Apply filters per row, and hide categories not selected (when filter active)
+  // Centralized loading boundary: render skeletons for ALL rows until the
+  // initial batch settles, eliminating the "ladder" CLS as rows pop in.
+  const initialLoading = rowQueries.some((q) => q.isLoading);
+
+  // Stable signature so useMemo only invalidates on real data change.
+  const dataSig = rowQueries.map((q) => q.dataUpdatedAt).join(",");
+
   const filteredRows = useMemo(() => {
     return ROWS.map((r, i) => {
       const items = rowQueries[i].data || [];
@@ -106,7 +112,8 @@ const Index = () => {
         loading: rowQueries[i].isLoading,
       };
     });
-  }, [rowQueries, filters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataSig, filters]);
 
   const activeFilterCount =
     filters.categories.length +
@@ -121,7 +128,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-8">
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-3 px-4 py-3 sm:px-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Button
@@ -208,8 +215,8 @@ const Index = () => {
                 key={row.key}
                 id={`section-${row.key}`}
                 title={row.label}
-                items={row.items}
-                loading={row.loading}
+                items={initialLoading ? [] : row.items}
+                loading={initialLoading || row.loading}
                 onSelect={handleSelect}
               />
             ) : null
