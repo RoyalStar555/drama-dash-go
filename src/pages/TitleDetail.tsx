@@ -396,9 +396,9 @@ const TitleDetail = () => {
                               cacheWatchItem(r);
                               navigate(`/watch/${encodeURIComponent(r.id)}`);
                             } else {
+                              // Navigate only — do NOT setState after, the
+                              // current component is about to unmount.
                               navigate(`/${getContentType(r) === "reading" ? "read" : "title"}/${encodeURIComponent(r.id)}`);
-                              setItem(r);
-                              window.scrollTo({ top: 0, behavior: "smooth" });
                             }
                           }}
                           className="group overflow-hidden rounded-lg bg-card text-left ring-1 ring-border transition-all hover:scale-105 hover:ring-primary"
