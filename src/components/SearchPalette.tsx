@@ -145,10 +145,10 @@ export const SearchPalette = ({ onSelect, initialQuery = "", onQueryChange }: Pr
             setQuery("");
             setOpen(false);
           }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="absolute right-1 top-1/2 flex h-11 w-11 min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label="Clear search"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="pointer-events-none h-4 w-4" />
         </button>
       )}
 
