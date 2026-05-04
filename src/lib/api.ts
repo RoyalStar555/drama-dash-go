@@ -312,6 +312,23 @@ export async function fetchSecondary(
   }
 }
 
+// ---- Indian / Regional discover --------------------------------------------
+// Uses TMDB /discover/movie with original_language filters. `lang` may be a
+// single ISO 639-1 code ("hi") or pipe-separated for "any of" ("hi|ta|te|ml|kn").
+export async function fetchIndianMovies(
+  lang: string = "hi|ta|te|ml|kn|bn"
+): Promise<MediaItem[]> {
+  const r = await tmdb<TmdbResult>("/discover/movie", {
+    with_original_language: lang,
+    sort_by: "popularity.desc",
+    region: "IN",
+    "vote_count.gte": "20",
+    include_adult: "false",
+  });
+  const mapped = mapTmdb(r?.results, "movie", "movie");
+  return withFallback(mapped, "movie");
+}
+
 export async function searchAll(query: string): Promise<MediaItem[]> {
   if (!query.trim()) return [];
   const q = encodeURIComponent(query);

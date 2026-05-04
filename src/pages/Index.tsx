@@ -12,6 +12,7 @@ import { cacheWatchItem } from "@/pages/Watch";
 import {
   fetchTrending,
   fetchSecondary,
+  fetchIndianMovies,
   MediaCategory,
   MediaItem,
 } from "@/lib/api";
@@ -21,7 +22,8 @@ interface RowDef {
   category: MediaCategory;
   label: string;
   navLabel: string;
-  source: "trending" | "secondary";
+  source: "trending" | "secondary" | "indian";
+  indianLang?: string; // pipe-separated ISO 639-1 codes for indian source
   showInNav?: boolean;
 }
 
@@ -33,6 +35,10 @@ const ROWS: RowDef[] = [
   { key: "anime", category: "anime", label: "Trending Anime", navLabel: "Anime", source: "trending", showInNav: true },
   { key: "manga", category: "manga", label: "Top Manga", navLabel: "Manga", source: "trending", showInNav: true },
   { key: "book", category: "book", label: "Bestselling Books", navLabel: "Books", source: "trending", showInNav: true },
+  { key: "indian-mix", category: "movie", label: "Indian Cinema", navLabel: "Indian Cinema", source: "indian", indianLang: "hi|ta|te|ml|kn|bn", showInNav: true },
+  { key: "indian-hindi", category: "movie", label: "Bollywood (Hindi)", navLabel: "Bollywood", source: "indian", indianLang: "hi" },
+  { key: "indian-tamil", category: "movie", label: "Tamil Cinema", navLabel: "Tamil", source: "indian", indianLang: "ta" },
+  { key: "indian-telugu", category: "movie", label: "Telugu Cinema", navLabel: "Telugu", source: "indian", indianLang: "te" },
   { key: "movie-recent", category: "movie", label: "Recent Movies in Theaters", navLabel: "Recent Movies", source: "secondary" },
   { key: "anime-season", category: "anime", label: "This Season's Anime", navLabel: "Seasonal Anime", source: "secondary" },
   { key: "drama-top", category: "drama", label: "Top Rated Dramas", navLabel: "Top Dramas", source: "secondary" },
@@ -86,7 +92,9 @@ const Index = () => {
       queryFn: () =>
         r.source === "trending"
           ? fetchTrending(r.category)
-          : fetchSecondary(r.category),
+          : r.source === "indian"
+            ? fetchIndianMovies(r.indianLang)
+            : fetchSecondary(r.category),
       staleTime: 1000 * 60 * 10,
     })),
   });
