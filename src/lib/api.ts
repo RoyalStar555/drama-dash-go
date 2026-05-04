@@ -67,6 +67,8 @@ const getTmdbKey = () =>
   (typeof window !== "undefined" && localStorage.getItem("tmdb_key")) ||
   DEFAULT_TMDB_KEY;
 
+// TMDB supports CORS directly from browsers, so no proxy is needed.
+// We keep a proxy fallback only if a direct call fails (network / region block).
 const CORS_PROXY = "https://corsproxy.io/?";
 const proxied = (url: string) => `${CORS_PROXY}${encodeURIComponent(url)}`;
 
@@ -87,26 +89,33 @@ export class RateLimitError extends Error {
   }
 }
 
-async function safeJson<T>(url: string, useProxy = false): Promise<T | null> {
-  const res = await fetch(useProxy ? proxied(url) : url);
-  if (res.status === 429) {
-    // Surface so React Query treats it as a failure (retry / error UI)
-    // instead of silently caching an empty result.
-    throw new RateLimitError(url);
-  }
-  if (!res.ok) return null;
+async function safeJson<T>(url: string): Promise<T | null> {
   try {
+    const res = await fetch(url);
+    if (res.status === 429) throw new RateLimitError(url);
+    if (!res.ok) return null;
     return (await res.json()) as T;
-  } catch {
+  } catch (err) {
+    if (err instanceof RateLimitError) throw err;
     return null;
   }
 }
 
-// ---- TMDB (Movies + Drama/TV) via CORS proxy --------------------------------
+// ---- TMDB (Movies + Drama/TV) ----------------------------------------------
+// Direct call first (TMDB allows CORS); if that returns null we transparently
+// retry through corsproxy.io. This eliminates the 403 from corsproxy.io that
+// was wiping all TMDB-backed rows in production.
 async function tmdb<T>(path: string, params: Record<string, string> = {}) {
-  const qs = new URLSearchParams({ api_key: getTmdbKey(), ...params });
+  const qs = new URLSearchParams({
+    api_key: getTmdbKey(),
+    language: "en-US",
+    ...params,
+  });
   const url = `https://api.themoviedb.org/3${path}?${qs.toString()}`;
-  return safeJson<T>(url, true);
+  const direct = await safeJson<T>(url);
+  if (direct) return direct;
+  // Fallback through proxy (helps for ISP/region blocks)
+  return safeJson<T>(proxied(url));
 }
 
 interface TmdbResult {
