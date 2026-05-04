@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Star, Loader2, X } from "lucide-react";
+import Fuse from "fuse.js";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { searchAll, MediaItem, MediaCategory, PLACEHOLDER } from "@/lib/api";
@@ -16,31 +17,9 @@ const CATEGORY_LABELS: Record<MediaCategory, string> = {
   book: "Book",
 };
 
-// ---- Fuzzy matching (lightweight, dependency-free) ----
+// ---- Fuzzy matching via Fuse.js (typo tolerant, weighted) ----
 const norm = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
-
-function fuzzyScore(query: string, target: string): number {
-  const q = norm(query);
-  const t = norm(target);
-  if (!q || !t) return 0;
-  if (t === q) return 1000;
-  if (t.startsWith(q)) return 800;
-  if (t.includes(q)) return 600;
-  // Subsequence + token overlap
-  let qi = 0;
-  for (let i = 0; i < t.length && qi < q.length; i++) {
-    if (t[i] === q[qi]) qi++;
-  }
-  const subseq = qi === q.length ? 200 : 0;
-  const qTokens = q.split(/\s+/).filter(Boolean);
-  const tTokens = new Set(t.split(/\s+/).filter(Boolean));
-  const overlap = qTokens.filter((tok) => tTokens.has(tok)).length;
-  // Tiny Levenshtein-ish: count matching chars within window
-  let common = 0;
-  for (const ch of new Set(q)) if (t.includes(ch)) common++;
-  return subseq + overlap * 50 + common * 4;
-}
 
 function rankAndDedupe(items: MediaItem[], query: string): MediaItem[] {
   const seen = new Map<string, MediaItem>();
@@ -50,11 +29,16 @@ function rankAndDedupe(items: MediaItem[], query: string): MediaItem[] {
   }
   const list = Array.from(seen.values());
   if (!query.trim()) return list;
-  return list
-    .map((it) => ({ it, s: fuzzyScore(query, it.title) }))
-    .filter((x) => x.s > 0)
-    .sort((a, b) => b.s - a.s)
-    .map((x) => x.it);
+  const fuse = new Fuse(list, {
+    keys: [
+      { name: "title", weight: 0.8 },
+      { name: "description", weight: 0.2 },
+    ],
+    threshold: 0.4, // typo tolerance
+    ignoreLocation: true,
+    minMatchCharLength: 2,
+  });
+  return fuse.search(query).map((r) => r.item);
 }
 
 interface Props {
@@ -92,7 +76,10 @@ export const SearchPalette = ({ onSelect, initialQuery = "", onQueryChange }: Pr
     staleTime: 1000 * 60 * 5,
   });
 
-  const results = rankAndDedupe(data, debounced).slice(0, 10);
+  const results = useMemo(
+    () => rankAndDedupe(data, debounced).slice(0, 10),
+    [data, debounced]
+  );
   const showDropdown = open && debounced.length > 1;
 
   const pick = (it: MediaItem) => {
