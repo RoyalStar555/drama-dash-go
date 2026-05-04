@@ -12,6 +12,7 @@ import { cacheWatchItem } from "@/pages/Watch";
 import {
   fetchTrending,
   fetchSecondary,
+  fetchIndianMovies,
   MediaCategory,
   MediaItem,
 } from "@/lib/api";
