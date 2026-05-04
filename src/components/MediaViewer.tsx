@@ -54,7 +54,7 @@ export const MediaViewer = ({
   return (
     <div
       className={cn(
-        "fixed inset-0 z-50 flex flex-col backdrop-blur-sm transition-opacity duration-300",
+        "fixed inset-0 z-[60] flex flex-col backdrop-blur-sm transition-opacity duration-300",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
         // Reader light mode flips the entire surface
         isReading && readerLight ? "bg-white/95" : "bg-background/95"
