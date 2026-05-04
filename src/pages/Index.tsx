@@ -92,7 +92,9 @@ const Index = () => {
       queryFn: () =>
         r.source === "trending"
           ? fetchTrending(r.category)
-          : fetchSecondary(r.category),
+          : r.source === "indian"
+            ? fetchIndianMovies(r.indianLang)
+            : fetchSecondary(r.category),
       staleTime: 1000 * 60 * 10,
     })),
   });
