@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Maximize2, Minimize2, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HlsPlayer } from "@/components/HlsPlayer";
-import { MediaItem, PLACEHOLDER, getContentType } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, getContentType, fetchTrailerKey } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // Reliable HLS test stream — bypasses CORS / regional issues
@@ -271,49 +272,83 @@ const PlayerBody = ({
   onPrev: () => void;
   onNext: () => void;
   cinema: boolean;
-}) => (
-  <div
-    className={cn(
-      "mx-auto flex w-full flex-col gap-4 px-2 py-3 sm:px-6 sm:py-6 animate-fade-in",
-      cinema ? "max-w-none" : "max-w-6xl"
-    )}
-  >
+}) => {
+  // Source routing:
+  //   Priority 1: explicit HLS stream on the item (mockData) → HlsPlayer
+  //   Priority 2: TMDB official YouTube trailer → YouTube embed
+  //   Priority 3: demo HLS fallback so the UI is never blank
+  const hasHls = !!item.hlsSrc;
+  const { data: ytKey } = useQuery({
+    queryKey: ["trailer-key", item.id],
+    queryFn: () => fetchTrailerKey(item),
+    enabled: !hasHls && !!item.tmdbId,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const useYouTube = !hasHls && !!ytKey;
+
+  return (
     <div
       className={cn(
-        "overflow-hidden border border-border bg-black shadow-2xl",
-        cinema ? "rounded-none border-0" : "rounded-xl sm:rounded-2xl"
+        "mx-auto flex w-full flex-col gap-4 px-2 py-3 sm:px-6 sm:py-6 animate-fade-in",
+        cinema ? "max-w-none" : "max-w-6xl"
       )}
     >
-      <div className="relative aspect-video w-full">
-        <HlsPlayer
-          key={`${item.id}-${episode}`}
-          src={DEMO_HLS_SRC}
-          poster={item.backdrop || item.posterUrl || item.poster}
-          title={`${item.title} — Episode ${episode}`}
-          className="absolute inset-0 h-full w-full bg-black"
-        />
+      <div
+        className={cn(
+          "overflow-hidden border border-border bg-black shadow-2xl",
+          cinema ? "rounded-none border-0" : "rounded-xl sm:rounded-2xl"
+        )}
+      >
+        <div className="relative aspect-video w-full">
+          {useYouTube ? (
+            // Mounting YouTube unmounts HlsPlayer (different key path),
+            // ensuring HLS is fully destroyed first → no audio overlap.
+            <iframe
+              key={`yt-${item.id}-${episode}-${ytKey}`}
+              src={`https://www.youtube.com/embed/${ytKey}?autoplay=1&rel=0&modestbranding=1`}
+              title={`${item.title} — Trailer`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+              className="absolute inset-0 h-full w-full bg-black"
+            />
+          ) : (
+            <HlsPlayer
+              key={`hls-${item.id}-${episode}`}
+              src={item.hlsSrc || DEMO_HLS_SRC}
+              poster={item.backdrop || item.posterUrl || item.poster}
+              title={`${item.title} — Episode ${episode}`}
+              className="absolute inset-0 h-full w-full bg-black"
+            />
+          )}
+        </div>
+      </div>
+
+      <p className="px-1 text-[11px] text-muted-foreground">
+        {useYouTube
+          ? `Official trailer (YouTube) — full episode stream coming soon.`
+          : hasHls
+            ? `Streaming Episode ${episode} of ${item.title}.`
+            : `Streaming demo content (Tears of Steel) for Episode ${episode}.`}
+      </p>
+
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={episode <= 1}
+          onClick={onPrev}
+        >
+          ← Previous
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          Episode {episode} of {total}
+        </span>
+        <Button size="sm" disabled={episode >= total} onClick={onNext}>
+          Next →
+        </Button>
       </div>
     </div>
+  );
+};
 
-    <p className="px-1 text-[11px] text-muted-foreground">
-      Streaming demo content (Tears of Steel) for Episode {episode}.
-    </p>
-
-    <div className="flex items-center justify-between gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={episode <= 1}
-        onClick={onPrev}
-      >
-        ← Previous
-      </Button>
-      <span className="text-xs text-muted-foreground">
-        Episode {episode} of {total}
-      </span>
-      <Button size="sm" disabled={episode >= total} onClick={onNext}>
-        Next →
-      </Button>
-    </div>
-  </div>
-);

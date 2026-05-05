@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MediaItem, PLACEHOLDER, fetchRelated, getContentType } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, fetchRelated, fetchLocalizedOverview, getContentType } from "@/lib/api";
 import { useMyList } from "@/hooks/useMyList";
 import { MyListMenu } from "@/components/MyListMenu";
 import { MediaRow } from "@/components/MediaRow";
@@ -88,6 +88,16 @@ const TitleDetail = () => {
     queryFn: () => (item ? fetchRelated(item) : Promise.resolve([])),
     enabled: !!item,
     staleTime: 1000 * 60 * 30,
+  });
+
+  // If English overview is empty (common for regional Indian titles),
+  // fetch the description in the original language so the synopsis is never blank.
+  const needsLocalized = !!item && !item.overview?.trim() && !!item.tmdbId && !!item.originalLanguage;
+  const { data: localizedOverview } = useQuery({
+    queryKey: ["localized-overview", item?.id],
+    queryFn: () => (item ? fetchLocalizedOverview(item) : Promise.resolve(null)),
+    enabled: needsLocalized,
+    staleTime: 1000 * 60 * 60,
   });
 
   // Mock metadata derived deterministically from id so it's stable
@@ -286,7 +296,7 @@ const TitleDetail = () => {
                 </button>
                 {synopsisOpen && (
                   <p className="mt-3 text-sm leading-relaxed text-foreground/90 animate-fade-in">
-                    {item.overview || "No description available."}
+                    {item.overview || localizedOverview || "No description available."}
                   </p>
                 )}
               </div>
