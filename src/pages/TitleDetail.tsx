@@ -296,7 +296,7 @@ const TitleDetail = () => {
                 </button>
                 {synopsisOpen && (
                   <p className="mt-3 text-sm leading-relaxed text-foreground/90 animate-fade-in">
-                    {item.overview || "No description available."}
+                    {item.overview || localizedOverview || "No description available."}
                   </p>
                 )}
               </div>
