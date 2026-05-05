@@ -31,9 +31,10 @@ function rankAndDedupe(items: MediaItem[], query: string): MediaItem[] {
   if (!query.trim()) return list;
   const fuse = new Fuse(list, {
     keys: [
-      { name: "title", weight: 0.6 },
+      { name: "title", weight: 0.5 },
       { name: "originalTitle", weight: 0.3 }, // matches native-language / release titles
-      { name: "description", weight: 0.1 },
+      { name: "alternativeTitles", weight: 0.15 }, // localized release titles
+      { name: "description", weight: 0.05 },
     ],
     threshold: 0.4, // typo tolerance
     ignoreLocation: true,
