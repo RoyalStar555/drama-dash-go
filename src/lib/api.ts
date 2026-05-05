@@ -414,6 +414,17 @@ export async function fetchTrailerKey(item: MediaItem): Promise<string | null> {
   return null;
 }
 
+// Fetch overview in original language when English overview is empty/missing.
+// Common case: Indian/regional titles where TMDB has no English synopsis yet.
+export async function fetchLocalizedOverview(item: MediaItem): Promise<string | null> {
+  if (!item.tmdbId || !item.tmdbType || !item.originalLanguage) return null;
+  const r = await tmdb<{ overview?: string }>(
+    `/${item.tmdbType}/${item.tmdbId}`,
+    { language: item.originalLanguage }
+  );
+  return r?.overview?.trim() || null;
+}
+
 // ---- Related (TMDB recommendations) ----------------------------------------
 export async function fetchRelated(item: MediaItem): Promise<MediaItem[]> {
   if (item.tmdbId && item.tmdbType) {
