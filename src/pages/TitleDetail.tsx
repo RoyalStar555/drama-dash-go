@@ -247,6 +247,23 @@ const TitleDetail = () => {
                 <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">
                   {item.title}
                 </h1>
+                {item.originalTitle && (
+                  <p className="mt-1 text-sm italic text-muted-foreground">
+                    {item.originalTitle}
+                  </p>
+                )}
+                {item.genre && item.genre.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {item.genre.slice(0, 5).map((g) => (
+                      <span
+                        key={g}
+                        className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                      >
+                        {g}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <Button
                     size="lg"
