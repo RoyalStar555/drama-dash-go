@@ -191,6 +191,11 @@ export const SearchPalette = ({ onSelect, initialQuery = "", onQueryChange }: Pr
                           {CATEGORY_LABELS[it.category]}
                         </span>
                       </div>
+                      {it.originalTitle && (
+                        <p className="truncate text-[11px] italic text-muted-foreground/80">
+                          {it.originalTitle}
+                        </p>
+                      )}
                       <p className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{it.year || "—"}</span>
                         {typeof it.rating === "number" && it.rating > 0 && (
