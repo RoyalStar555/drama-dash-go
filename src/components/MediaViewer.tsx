@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Maximize2, Minimize2, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HlsPlayer } from "@/components/HlsPlayer";
-import { MediaItem, PLACEHOLDER, getContentType } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, getContentType, fetchTrailerKey } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // Reliable HLS test stream — bypasses CORS / regional issues
