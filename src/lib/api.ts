@@ -53,6 +53,11 @@ export interface MediaItem {
   tmdbType?: "movie" | "tv";
   trailerQuery?: string; // YouTube search fallback
   externalUrl?: string;
+  // Regional/i18n fields — used by Fuse.js alias matching and fallback overview fetch
+  originalTitle?: string;
+  originalLanguage?: string;
+  // Optional direct stream (HLS .m3u8). When absent, MediaViewer falls back to YouTube trailer.
+  hlsSrc?: string;
 }
 
 // Derive contentType from category when not explicitly set.
@@ -144,6 +149,7 @@ function mapTmdb(
     const poster = r.poster_path ? `${TMDB_IMG}${r.poster_path}` : PLACEHOLDER;
     const title =
       r.title || r.name || r.original_title || r.original_name || "Untitled";
+    const originalTitle = r.original_title || r.original_name;
     return {
       id: `tmdb-${type}-${r.id}`,
       category,
@@ -158,6 +164,8 @@ function mapTmdb(
       contentType: "video" as const,
       tmdbId: r.id,
       tmdbType: type,
+      originalTitle: originalTitle && originalTitle !== title ? originalTitle : undefined,
+      originalLanguage: r.original_language,
     };
   });
 }
