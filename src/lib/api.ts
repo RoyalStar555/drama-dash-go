@@ -1,5 +1,5 @@
 // Unified media API for StoryHub
-// TMDB requests are routed through corsproxy.io to bypass ISP/region blocks.
+// TMDB requests prefer direct CORS; fall back to corsproxy.io if blocked.
 
 export type MediaCategory = "movie" | "drama" | "anime" | "manga" | "book";
 
@@ -56,6 +56,8 @@ export interface MediaItem {
   // Regional/i18n fields — used by Fuse.js alias matching and fallback overview fetch
   originalTitle?: string;
   originalLanguage?: string;
+  // Alternate titles (release titles in other locales) — searched by Fuse.js
+  alternativeTitles?: string[];
   // Optional direct stream (HLS .m3u8). When absent, MediaViewer falls back to YouTube trailer.
   hlsSrc?: string;
 }
@@ -64,6 +66,57 @@ export interface MediaItem {
 export const getContentType = (item: MediaItem): ContentType =>
   item.contentType ??
   (item.category === "manga" || item.category === "book" ? "reading" : "video");
+
+// ---- Genre maps -------------------------------------------------------------
+// Explicit TMDB genre ID → human label translations. Used by mapTmdb so every
+// MediaItem.genre is a readable string array, never raw numeric IDs.
+export const TMDB_MOVIE_GENRES: Record<number, string> = {
+  28: "Action",
+  12: "Adventure",
+  16: "Animation",
+  35: "Comedy",
+  80: "Crime",
+  99: "Documentary",
+  18: "Drama",
+  10751: "Family",
+  14: "Fantasy",
+  36: "History",
+  27: "Horror",
+  10402: "Music",
+  9648: "Mystery",
+  10749: "Romance",
+  878: "Sci-Fi",
+  10770: "TV Movie",
+  53: "Thriller",
+  10752: "War",
+  37: "Western",
+};
+
+export const TMDB_TV_GENRES: Record<number, string> = {
+  10759: "Action & Adventure",
+  16: "Animation",
+  35: "Comedy",
+  80: "Crime",
+  99: "Documentary",
+  18: "Drama",
+  10751: "Family",
+  10762: "Kids",
+  9648: "Mystery",
+  10763: "News",
+  10764: "Reality",
+  10765: "Sci-Fi & Fantasy",
+  10766: "Soap",
+  10767: "Talk",
+  10768: "War & Politics",
+  37: "Western",
+};
+
+const mapGenreIds = (ids: number[] | undefined, type: "movie" | "tv"): string[] | undefined => {
+  if (!ids || ids.length === 0) return undefined;
+  const dict = type === "tv" ? TMDB_TV_GENRES : TMDB_MOVIE_GENRES;
+  const labels = ids.map((id) => dict[id]).filter(Boolean) as string[];
+  return labels.length ? labels : undefined;
+};
 
 // ---- Config -----------------------------------------------------------------
 // Public TMDB v3 demo key path; users can swap via localStorage `tmdb_key`.
@@ -107,9 +160,6 @@ async function safeJson<T>(url: string): Promise<T | null> {
 }
 
 // ---- TMDB (Movies + Drama/TV) ----------------------------------------------
-// Direct call first (TMDB allows CORS); if that returns null we transparently
-// retry through corsproxy.io. This eliminates the 403 from corsproxy.io that
-// was wiping all TMDB-backed rows in production.
 async function tmdb<T>(path: string, params: Record<string, string> = {}) {
   const qs = new URLSearchParams({
     api_key: getTmdbKey(),
@@ -119,7 +169,6 @@ async function tmdb<T>(path: string, params: Record<string, string> = {}) {
   const url = `https://api.themoviedb.org/3${path}?${qs.toString()}`;
   const direct = await safeJson<T>(url);
   if (direct) return direct;
-  // Fallback through proxy (helps for ISP/region blocks)
   return safeJson<T>(proxied(url));
 }
 
@@ -137,37 +186,61 @@ interface TmdbResult {
     overview?: string;
     vote_average?: number;
     original_language?: string;
+    genre_ids?: number[];
   }>;
+}
+
+interface MapTmdbOptions {
+  // Enforce that a result's original_language matches one of these codes
+  // (e.g., ["te"] for Telugu). Mismatches are dropped to prevent leaks.
+  enforceLanguages?: string[];
 }
 
 function mapTmdb(
   results: TmdbResult["results"] = [],
   type: "movie" | "tv",
-  category: MediaCategory
+  category: MediaCategory,
+  opts: MapTmdbOptions = {}
 ): MediaItem[] {
-  return results.map((r) => {
+  const out: MediaItem[] = [];
+  for (const r of results) {
+    if (
+      opts.enforceLanguages &&
+      opts.enforceLanguages.length > 0 &&
+      (!r.original_language || !opts.enforceLanguages.includes(r.original_language))
+    ) {
+      continue; // discard "Hollywood leak" entries
+    }
     const poster = r.poster_path ? `${TMDB_IMG}${r.poster_path}` : PLACEHOLDER;
     const title =
       r.title || r.name || r.original_title || r.original_name || "Untitled";
     const originalTitle = r.original_title || r.original_name;
-    return {
+    const overviewText = r.overview?.trim() || undefined;
+    const ratingNum =
+      typeof r.vote_average === "number"
+        ? Number(r.vote_average.toFixed(1))
+        : undefined;
+    out.push({
       id: `tmdb-${type}-${r.id}`,
       category,
       title,
-      description: r.overview,
+      // description and overview mirror the same TMDB field
+      description: overviewText,
+      overview: overviewText,
       poster,
       posterUrl: poster,
       backdrop: r.backdrop_path ? `${TMDB_BACKDROP}${r.backdrop_path}` : undefined,
       year: (r.release_date || r.first_air_date || "").slice(0, 4),
-      overview: r.overview,
-      rating: r.vote_average,
+      rating: ratingNum,
+      genre: mapGenreIds(r.genre_ids, type),
       contentType: "video" as const,
       tmdbId: r.id,
       tmdbType: type,
       originalTitle: originalTitle && originalTitle !== title ? originalTitle : undefined,
       originalLanguage: r.original_language,
-    };
-  });
+    });
+  }
+  return out;
 }
 
 // ---- Jikan (Anime + Manga) --------------------------------------------------
@@ -183,6 +256,7 @@ interface JikanResp {
     score?: number;
     trailer?: { youtube_id?: string };
     url?: string;
+    genres?: Array<{ name?: string }>;
   }>;
 }
 
@@ -195,21 +269,26 @@ function mapJikan(
       r.images?.jpg?.large_image_url ||
       r.images?.jpg?.image_url ||
       PLACEHOLDER;
+    const synopsis = r.synopsis?.trim() || undefined;
+    const ratingNum =
+      typeof r.score === "number" ? Number(r.score.toFixed(1)) : undefined;
     return {
       id: `jikan-${category}-${r.mal_id}`,
       category,
       title: r.title_english || r.title,
-      description: r.synopsis,
+      description: synopsis,
+      overview: synopsis,
       poster,
       posterUrl: poster,
       year: (r.aired?.from || r.published?.from || "").slice(0, 4),
-      overview: r.synopsis,
-      rating: r.score,
+      rating: ratingNum,
+      genre: r.genres?.map((g) => g.name).filter(Boolean) as string[] | undefined,
       contentType: category === "manga" ? ("reading" as const) : ("video" as const),
       trailerQuery: r.trailer?.youtube_id
         ? r.trailer.youtube_id
         : `${r.title} ${category} trailer`,
       externalUrl: r.url,
+      originalTitle: r.title_english && r.title_english !== r.title ? r.title : undefined,
     };
   });
 }
@@ -237,10 +316,11 @@ function mapOL(d: OLResp["docs"] = []): MediaItem[] {
       category: "book" as const,
       title: r.title,
       description: desc,
+      overview: desc,
       poster,
       posterUrl: poster,
       year: r.first_publish_year ? String(r.first_publish_year) : undefined,
-      overview: desc,
+      genre: r.subject?.slice(0, 4),
       contentType: "reading" as const,
       trailerQuery: `${r.title} book review`,
       externalUrl: `https://openlibrary.org${r.key}`,
@@ -255,7 +335,6 @@ import { MOCK_BY_CATEGORY } from "./mockData";
 function withFallback(items: MediaItem[], category: MediaCategory): MediaItem[] {
   const mocks = MOCK_BY_CATEGORY[category] || [];
   if (items.length >= 5) return items;
-  // Append mocks that aren't already present (by title) until we have plenty.
   const seen = new Set(items.map((i) => i.title.toLowerCase()));
   const extras = mocks.filter((m) => !seen.has(m.title.toLowerCase()));
   return [...items, ...extras];
@@ -294,8 +373,6 @@ export async function fetchTrending(
   }
 }
 
-// Secondary feeds — used to populate distinct rows like "Recent Movies",
-// "Trending Anime This Season", etc. Falls back to mocks when offline.
 export async function fetchSecondary(
   category: MediaCategory
 ): Promise<MediaItem[]> {
@@ -332,6 +409,8 @@ export async function fetchSecondary(
 // ---- Indian / Regional discover --------------------------------------------
 // Uses TMDB /discover/movie with original_language filters. `lang` may be a
 // single ISO 639-1 code ("hi") or pipe-separated for "any of" ("hi|ta|te|ml|kn").
+// When a single language is supplied we strictly enforce the match in the
+// mapper to prevent Hollywood-language leaks.
 export async function fetchIndianMovies(
   lang: string = "hi|ta|te|ml|kn|bn"
 ): Promise<MediaItem[]> {
@@ -342,7 +421,10 @@ export async function fetchIndianMovies(
     "vote_count.gte": "20",
     include_adult: "false",
   });
-  const mapped = mapTmdb(r?.results, "movie", "movie");
+  const allowed = lang.split("|").map((s) => s.trim()).filter(Boolean);
+  const mapped = mapTmdb(r?.results, "movie", "movie", {
+    enforceLanguages: allowed,
+  });
   return withFallback(mapped, "movie");
 }
 
@@ -350,9 +432,6 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
   if (!query.trim()) return [];
   const q = encodeURIComponent(query);
 
-  // Use allSettled so one rate-limited provider (e.g. Jikan 429) doesn't
-  // wipe out results from the other four. We also fan out TMDB twice — once
-  // global and once with region=IN — to surface Indian / regional titles.
   const settled = await Promise.allSettled([
     tmdb<TmdbResult>("/search/movie", { query, include_adult: "false" }),
     tmdb<TmdbResult>("/search/tv", { query, include_adult: "false" }),
@@ -376,7 +455,6 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
   const manga = val<JikanResp>(5);
   const books = val<OLResp>(6);
 
-  // De-duplicate across providers by (category + normalized title + year).
   const out: MediaItem[] = [
     ...mapTmdb(movie?.results, "movie", "movie"),
     ...mapTmdb(movieIn?.results, "movie", "movie"),
@@ -388,12 +466,35 @@ export async function searchAll(query: string): Promise<MediaItem[]> {
   ];
 
   const seen = new Set<string>();
-  return out.filter((it) => {
+  const deduped = out.filter((it) => {
     const key = `${it.category}::${it.title.toLowerCase().replace(/[^a-z0-9]/g, "")}::${it.year || ""}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+
+  // Hydrate alternative_titles for the top TMDB hits so Fuse.js can match
+  // release titles in other locales (e.g., "RRR" ↔ "Rise Roar Revolt").
+  const tmdbHits = deduped.filter((it) => it.tmdbId && it.tmdbType).slice(0, 8);
+  await Promise.all(
+    tmdbHits.map(async (it) => {
+      const path =
+        it.tmdbType === "tv"
+          ? `/tv/${it.tmdbId}/alternative_titles`
+          : `/movie/${it.tmdbId}/alternative_titles`;
+      const resp = await tmdb<{
+        titles?: Array<{ title: string }>;
+        results?: Array<{ title: string }>;
+      }>(path);
+      const list = resp?.titles || resp?.results || [];
+      const alts = Array.from(
+        new Set(list.map((t) => t.title).filter((t) => !!t && t !== it.title))
+      ).slice(0, 6);
+      if (alts.length) it.alternativeTitles = alts;
+    })
+  );
+
+  return deduped;
 }
 
 // ---- Trailer (YouTube) ------------------------------------------------------
@@ -407,7 +508,6 @@ export async function fetchTrailerKey(item: MediaItem): Promise<string | null> {
     );
     if (yt) return yt.key;
   }
-  // For Jikan items we may already have a YouTube ID
   if (item.trailerQuery && /^[A-Za-z0-9_-]{11}$/.test(item.trailerQuery)) {
     return item.trailerQuery;
   }
@@ -415,7 +515,6 @@ export async function fetchTrailerKey(item: MediaItem): Promise<string | null> {
 }
 
 // Fetch overview in original language when English overview is empty/missing.
-// Common case: Indian/regional titles where TMDB has no English synopsis yet.
 export async function fetchLocalizedOverview(item: MediaItem): Promise<string | null> {
   if (!item.tmdbId || !item.tmdbType || !item.originalLanguage) return null;
   const r = await tmdb<{ overview?: string }>(
@@ -426,16 +525,54 @@ export async function fetchLocalizedOverview(item: MediaItem): Promise<string | 
 }
 
 // ---- Related (TMDB recommendations) ----------------------------------------
+// For regional Indian titles (Hindi, Tamil, Telugu, etc.) we filter the
+// recommendations through /discover with the same original_language so the
+// suggested list stays inside the same regional industry.
+const INDIAN_LANGS = new Set(["hi", "ta", "te", "ml", "kn", "bn", "mr", "pa", "gu"]);
+
 export async function fetchRelated(item: MediaItem): Promise<MediaItem[]> {
-  if (item.tmdbId && item.tmdbType) {
-    const r = await tmdb<TmdbResult>(
-      `/${item.tmdbType}/${item.tmdbId}/recommendations`
-    );
-    return mapTmdb(
-      r?.results,
-      item.tmdbType,
-      item.tmdbType === "tv" ? "drama" : "movie"
-    );
+  if (!item.tmdbId || !item.tmdbType) return [];
+
+  const recs = await tmdb<TmdbResult>(
+    `/${item.tmdbType}/${item.tmdbId}/recommendations`
+  );
+  const cat: MediaCategory = item.tmdbType === "tv" ? "drama" : "movie";
+
+  const lang = item.originalLanguage;
+  const isRegional = !!lang && INDIAN_LANGS.has(lang);
+
+  if (isRegional && lang) {
+    // Strict: only same-language recommendations
+    const sameLang = mapTmdb(recs?.results, item.tmdbType, cat, {
+      enforceLanguages: [lang],
+    });
+    if (sameLang.length >= 4) return sameLang;
+
+    // Top up via /discover so the row never looks empty
+    const discoverPath =
+      item.tmdbType === "tv" ? "/discover/tv" : "/discover/movie";
+    const langKey =
+      item.tmdbType === "tv" ? "with_original_language" : "with_original_language";
+    const extra = await tmdb<TmdbResult>(discoverPath, {
+      [langKey]: lang,
+      sort_by: "popularity.desc",
+      region: "IN",
+      "vote_count.gte": "20",
+      include_adult: "false",
+    });
+    const extraMapped = mapTmdb(extra?.results, item.tmdbType, cat, {
+      enforceLanguages: [lang],
+    }).filter((x) => x.tmdbId !== item.tmdbId);
+
+    const seen = new Set(sameLang.map((s) => s.id));
+    for (const m of extraMapped) {
+      if (!seen.has(m.id)) {
+        sameLang.push(m);
+        seen.add(m.id);
+      }
+    }
+    return sameLang;
   }
-  return [];
+
+  return mapTmdb(recs?.results, item.tmdbType, cat);
 }
