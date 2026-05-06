@@ -87,21 +87,23 @@ const Index = () => {
 
   // Single hook call (no Rules-of-Hooks violation, no per-render array)
   const rowQueries = useQueries({
-    queries: ROWS.map((r) => ({
-      queryKey: ["row", r.key],
-      queryFn: () =>
-        r.source === "trending"
-          ? fetchTrending(r.category)
-          : r.source === "indian"
-            ? fetchIndianMovies(r.indianLang)
-            : fetchSecondary(r.category),
-      staleTime: 1000 * 60 * 10,
-    })),
+    queries: ROWS.map((r) => {
+      const isJikan = r.category === "anime" || r.category === "manga";
+      return {
+        queryKey: ["row", r.key],
+        queryFn: () =>
+          r.source === "trending"
+            ? fetchTrending(r.category)
+            : r.source === "indian"
+              ? fetchIndianMovies(r.indianLang)
+              : fetchSecondary(r.category),
+        staleTime: 1000 * 60 * 10,
+        // Jikan rate-limits aggressively (HTTP 429). Fail fast → mock fallback
+        // kicks in instead of stalling the row through 3 retries.
+        retry: isJikan ? 0 : 1,
+      };
+    }),
   });
-
-  // Centralized loading boundary: render skeletons for ALL rows until the
-  // initial batch settles, eliminating the "ladder" CLS as rows pop in.
-  const initialLoading = rowQueries.some((q) => q.isLoading);
 
   // Stable signature so useMemo only invalidates on real data change.
   const dataSig = rowQueries.map((q) => q.dataUpdatedAt).join(",");
