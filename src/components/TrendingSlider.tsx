@@ -57,14 +57,29 @@ export const TrendingSlider = ({ items, loading, onPlay, onMore }: Props) => {
               i === index ? "opacity-100" : "pointer-events-none opacity-0"
             )}
           >
-            <img
-              src={s.backdrop || s.poster}
-              alt={s.title}
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
-              }}
-              className="h-full w-full object-cover"
-            />
+            {(() => {
+              const raw = s.backdrop || s.poster;
+              const isTmdb = raw.includes("image.tmdb.org/t/p/");
+              const base = isTmdb ? raw.replace(/\/t\/p\/w\d+\//, "/t/p/") : raw;
+              const srcSet = isTmdb
+                ? `${base.replace("/t/p/", "/t/p/w780/")} 780w, ${base.replace("/t/p/", "/t/p/w1280/")} 1280w`
+                : undefined;
+              const src = isTmdb ? base.replace("/t/p/", "/t/p/w1280/") : raw;
+              return (
+                <img
+                  src={src}
+                  srcSet={srcSet}
+                  sizes="(min-width: 1024px) 1280px, 100vw"
+                  alt={s.title}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = PLACEHOLDER;
+                  }}
+                  className="h-full w-full object-cover"
+                />
+              );
+            })()}
             <div className="absolute inset-0 hero-vignette" />
             <div className="absolute inset-x-0 bottom-0 p-5 sm:p-10">
               <div className="glass max-w-2xl rounded-xl p-5 sm:p-6">
