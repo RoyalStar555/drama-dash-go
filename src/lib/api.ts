@@ -267,6 +267,7 @@ function mapTmdb(
       tmdbType: type,
       originalTitle: originalTitle && originalTitle !== title ? originalTitle : undefined,
       originalLanguage: r.original_language,
+      hlsSrc: pickDemoHls(`tmdb-${type}-${r.id}`),
     });
   }
   return out;
@@ -318,6 +319,7 @@ function mapJikan(
         : `${r.title} ${category} trailer`,
       externalUrl: r.url,
       originalTitle: r.title_english && r.title_english !== r.title ? r.title : undefined,
+      hlsSrc: pickDemoHls(`jikan-${category}-${r.mal_id}`),
     };
   });
 }
@@ -532,11 +534,15 @@ export async function fetchTrailerKey(item: MediaItem): Promise<string | null> {
     const r = await tmdb<{
       results?: Array<{ key: string; site: string; type: string }>;
     }>(`/${item.tmdbType}/${item.tmdbId}/videos`);
-    const yt = r?.results?.find(
-      (v) => v.site === "YouTube" && /Trailer|Teaser/i.test(v.type)
-    );
-    if (yt) return yt.key;
+    const yt = r?.results?.filter((v) => v.site === "YouTube") || [];
+    // Priority: Trailer → Teaser → Clip → Featurette
+    const order = ["Trailer", "Teaser", "Clip", "Featurette"];
+    for (const t of order) {
+      const hit = yt.find((v) => new RegExp(t, "i").test(v.type));
+      if (hit) return hit.key;
+    }
   }
+  // Jikan trailerQuery may be either an 11-char YouTube ID or a search string.
   if (item.trailerQuery && /^[A-Za-z0-9_-]{11}$/.test(item.trailerQuery)) {
     return item.trailerQuery;
   }
