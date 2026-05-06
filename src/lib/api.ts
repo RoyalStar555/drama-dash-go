@@ -10,6 +10,7 @@ export interface MediaEpisode {
   number: number;
   title: string;
   runtime?: string;
+  hlsSrc?: string;
 }
 
 export interface MediaChapter {
@@ -61,6 +62,34 @@ export interface MediaItem {
   // Optional direct stream (HLS .m3u8). When absent, MediaViewer falls back to YouTube trailer.
   hlsSrc?: string;
 }
+
+// ---- Public demo HLS pool ---------------------------------------------------
+// Distinct, publicly-hosted test streams. Items without an explicit hlsSrc
+// deterministically pick one based on item.id so different titles play
+// visibly different videos (no more "Tears of Steel for everything").
+export const DEMO_HLS_POOL: string[] = [
+  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8",
+  "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+  "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8",
+  "https://test-streams.mux.dev/test_001/stream.m3u8",
+  "https://demo.unified-streaming.com/k8s/features/stable/video/sintel/sintel.ism/.m3u8",
+  "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8",
+];
+
+const hashString = (s: string): number => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+
+export const pickDemoHls = (id: string): string =>
+  DEMO_HLS_POOL[hashString(id) % DEMO_HLS_POOL.length];
+
+export const resolveHlsSrc = (item: MediaItem, episode: number = 1): string => {
+  const meta = item.metadata as VideoMetadata | undefined;
+  const epHls = meta?.episodes?.[episode - 1]?.hlsSrc;
+  return epHls || item.hlsSrc || pickDemoHls(item.id);
+};
 
 // Derive contentType from category when not explicitly set.
 export const getContentType = (item: MediaItem): ContentType =>
@@ -238,6 +267,7 @@ function mapTmdb(
       tmdbType: type,
       originalTitle: originalTitle && originalTitle !== title ? originalTitle : undefined,
       originalLanguage: r.original_language,
+      hlsSrc: pickDemoHls(`tmdb-${type}-${r.id}`),
     });
   }
   return out;
@@ -289,6 +319,7 @@ function mapJikan(
         : `${r.title} ${category} trailer`,
       externalUrl: r.url,
       originalTitle: r.title_english && r.title_english !== r.title ? r.title : undefined,
+      hlsSrc: pickDemoHls(`jikan-${category}-${r.mal_id}`),
     };
   });
 }
@@ -503,11 +534,15 @@ export async function fetchTrailerKey(item: MediaItem): Promise<string | null> {
     const r = await tmdb<{
       results?: Array<{ key: string; site: string; type: string }>;
     }>(`/${item.tmdbType}/${item.tmdbId}/videos`);
-    const yt = r?.results?.find(
-      (v) => v.site === "YouTube" && /Trailer|Teaser/i.test(v.type)
-    );
-    if (yt) return yt.key;
+    const yt = r?.results?.filter((v) => v.site === "YouTube") || [];
+    // Priority: Trailer → Teaser → Clip → Featurette
+    const order = ["Trailer", "Teaser", "Clip", "Featurette"];
+    for (const t of order) {
+      const hit = yt.find((v) => new RegExp(t, "i").test(v.type));
+      if (hit) return hit.key;
+    }
   }
+  // Jikan trailerQuery may be either an 11-char YouTube ID or a search string.
   if (item.trailerQuery && /^[A-Za-z0-9_-]{11}$/.test(item.trailerQuery)) {
     return item.trailerQuery;
   }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -23,9 +23,13 @@ import { MediaItem, PLACEHOLDER, fetchRelated, fetchLocalizedOverview, getConten
 import { useMyList } from "@/hooks/useMyList";
 import { MyListMenu } from "@/components/MyListMenu";
 import { MediaRow } from "@/components/MediaRow";
-import { MediaViewer } from "@/components/MediaViewer";
 import { cacheWatchItem } from "@/pages/Watch";
 import { cn } from "@/lib/utils";
+
+// Code-split heavy media engine (hls.js bundle) so it only loads on play.
+const MediaViewer = lazy(() =>
+  import("@/components/MediaViewer").then((m) => ({ default: m.MediaViewer }))
+);
 
 const STORAGE_PREFIX = "storyhub_watch_";
 const loadCachedItem = (id: string): MediaItem | null => {
@@ -173,22 +177,25 @@ const TitleDetail = () => {
         </div>
       </header>
 
-      {/* Backdrop hero */}
+      {/* Backdrop hero — purely decorative, must NOT intercept clicks */}
       {item?.backdrop && (
-        <div className="relative h-48 w-full overflow-hidden sm:h-64 md:h-80">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-[57px] z-0 h-48 overflow-hidden sm:h-64 md:h-80"
+        >
           <img
             src={item.backdrop}
             alt=""
             className="h-full w-full object-cover opacity-40"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
         </div>
       )}
 
       <main
         className={cn(
-          "mx-auto max-w-7xl px-4 sm:px-8",
-          item?.backdrop ? "-mt-32 pb-12" : "py-8"
+          "relative z-10 mx-auto max-w-7xl px-4 sm:px-8",
+          item?.backdrop ? "pt-32 pb-12 sm:pt-44 md:pt-56" : "py-8"
         )}
       >
         {!item ? (
@@ -264,10 +271,10 @@ const TitleDetail = () => {
                     ))}
                   </div>
                 )}
-                <div className="mt-3 flex flex-wrap items-center gap-3">
+                <div className="relative z-10 mt-3 flex flex-wrap items-center gap-3">
                   <Button
                     size="lg"
-                    className="gap-2 transition-all"
+                    className="gap-2 transition-colors"
                     onClick={openViewer}
                     disabled={!hasPicked || activeEp == null}
                     title={
@@ -287,11 +294,13 @@ const TitleDetail = () => {
                   </Button>
                   <MyListMenu item={item} />
                 </div>
-                {!hasPicked && (
-                  <p className="mt-2 text-xs text-muted-foreground animate-fade-in">
-                    Choose {isReader ? "a chapter" : "an episode"} below to enable the {isReader ? "reader" : "player"}.
-                  </p>
-                )}
+                <div className="mt-2 min-h-[1.25rem]">
+                  {!hasPicked && (
+                    <p className="text-xs text-muted-foreground animate-fade-in">
+                      Choose {isReader ? "a chapter" : "an episode"} below to enable the {isReader ? "reader" : "player"}.
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Collapsible synopsis */}
@@ -454,17 +463,19 @@ const TitleDetail = () => {
 
         {/* Smart Content Switcher — central MediaViewer (HLS player or webtoon reader) */}
         {item && viewerOpen && activeEp != null && (
-          <MediaViewer
-            item={item}
-            currentSelection={activeEp}
-            total={totalUnits}
-            visible={viewerVisible}
-            onClose={closeViewer}
-            onSelectionChange={(n) => {
-              setActiveEp(n);
-              markEpisodeWatched(item, n, totalUnits);
-            }}
-          />
+          <Suspense fallback={null}>
+            <MediaViewer
+              item={item}
+              currentSelection={activeEp}
+              total={totalUnits}
+              visible={viewerVisible}
+              onClose={closeViewer}
+              onSelectionChange={(n) => {
+                setActiveEp(n);
+                markEpisodeWatched(item, n, totalUnits);
+              }}
+            />
+          </Suspense>
         )}
 
         {related.length > 0 && (

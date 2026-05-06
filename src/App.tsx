@@ -10,7 +10,16 @@ import MyList from "./pages/MyList.tsx";
 import TitleDetail from "./pages/TitleDetail.tsx";
 import Category from "./pages/Category.tsx";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 10 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

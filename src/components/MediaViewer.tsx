@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Maximize2, Minimize2, Sun, Moon } from "lucide-react";
+import { ArrowLeft, Maximize2, Minimize2, Sun, Moon, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HlsPlayer } from "@/components/HlsPlayer";
-import { MediaItem, PLACEHOLDER, getContentType, fetchTrailerKey } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, getContentType, fetchTrailerKey, resolveHlsSrc } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-// Reliable HLS test stream — bypasses CORS / regional issues
-export const DEMO_HLS_SRC =
-  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
+// Code-split hls.js bundle.
+const HlsPlayer = lazy(() =>
+  import("@/components/HlsPlayer").then((m) => ({ default: m.HlsPlayer }))
+);
 
 interface Props {
   item: MediaItem;
@@ -277,15 +277,20 @@ const PlayerBody = ({
   //   Priority 1: explicit HLS stream on the item (mockData) → HlsPlayer
   //   Priority 2: TMDB official YouTube trailer → YouTube embed
   //   Priority 3: demo HLS fallback so the UI is never blank
-  const hasHls = !!item.hlsSrc;
-  const { data: ytKey } = useQuery({
+  // Episode-level resolution: episodes[i]?.hlsSrc → item.hlsSrc → demo pool.
+  const resolvedHls = resolveHlsSrc(item, episode);
+  const hasHls = !!resolvedHls;
+  const { data: ytKey, isLoading: ytLoading } = useQuery({
     queryKey: ["trailer-key", item.id],
     queryFn: () => fetchTrailerKey(item),
-    enabled: !hasHls && !!item.tmdbId,
+    enabled: !!item.tmdbId,
     staleTime: 1000 * 60 * 30,
+    retry: 0,
   });
 
-  const useYouTube = !hasHls && !!ytKey;
+  // Prefer YouTube trailer when available (real content); fall back to HLS pool.
+  const useYouTube = !!ytKey;
+  const showUnavailable = !useYouTube && !ytLoading && !hasHls;
 
   return (
     <div
@@ -301,9 +306,12 @@ const PlayerBody = ({
         )}
       >
         <div className="relative aspect-video w-full">
-          {useYouTube ? (
-            // Mounting YouTube unmounts HlsPlayer (different key path),
-            // ensuring HLS is fully destroyed first → no audio overlap.
+          {showUnavailable ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black text-sm text-muted-foreground">
+              <AlertTriangle className="h-6 w-6" />
+              Source unavailable for this title.
+            </div>
+          ) : useYouTube ? (
             <iframe
               key={`yt-${item.id}-${episode}-${ytKey}`}
               src={`https://www.youtube.com/embed/${ytKey}?autoplay=1&rel=0&modestbranding=1`}
@@ -313,23 +321,25 @@ const PlayerBody = ({
               className="absolute inset-0 h-full w-full bg-black"
             />
           ) : (
-            <HlsPlayer
-              key={`hls-${item.id}-${episode}`}
-              src={item.hlsSrc || DEMO_HLS_SRC}
-              poster={item.backdrop || item.posterUrl || item.poster}
-              title={`${item.title} — Episode ${episode}`}
-              className="absolute inset-0 h-full w-full bg-black"
-            />
+            <Suspense fallback={<div className="absolute inset-0 bg-black" />}>
+              <HlsPlayer
+                key={`hls-${item.id}-${episode}`}
+                src={resolvedHls}
+                poster={item.backdrop || item.posterUrl || item.poster}
+                title={`${item.title} — Episode ${episode}`}
+                className="absolute inset-0 h-full w-full bg-black"
+              />
+            </Suspense>
           )}
         </div>
       </div>
 
       <p className="px-1 text-[11px] text-muted-foreground">
-        {useYouTube
-          ? `Official trailer (YouTube) — full episode stream coming soon.`
-          : hasHls
-            ? `Streaming Episode ${episode} of ${item.title}.`
-            : `Streaming demo content (Tears of Steel) for Episode ${episode}.`}
+        {showUnavailable
+          ? `No trailer or stream is available for this title yet.`
+          : useYouTube
+            ? `Official trailer (YouTube) — full episode stream coming soon.`
+            : `Streaming Episode ${episode} of ${item.title}.`}
       </p>
 
       <div className="flex items-center justify-between gap-2">
