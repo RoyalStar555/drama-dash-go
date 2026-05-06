@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -23,9 +23,13 @@ import { MediaItem, PLACEHOLDER, fetchRelated, fetchLocalizedOverview, getConten
 import { useMyList } from "@/hooks/useMyList";
 import { MyListMenu } from "@/components/MyListMenu";
 import { MediaRow } from "@/components/MediaRow";
-import { MediaViewer } from "@/components/MediaViewer";
 import { cacheWatchItem } from "@/pages/Watch";
 import { cn } from "@/lib/utils";
+
+// Code-split heavy media engine (hls.js bundle) so it only loads on play.
+const MediaViewer = lazy(() =>
+  import("@/components/MediaViewer").then((m) => ({ default: m.MediaViewer }))
+);
 
 const STORAGE_PREFIX = "storyhub_watch_";
 const loadCachedItem = (id: string): MediaItem | null => {
