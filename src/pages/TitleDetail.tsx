@@ -177,22 +177,25 @@ const TitleDetail = () => {
         </div>
       </header>
 
-      {/* Backdrop hero */}
+      {/* Backdrop hero — purely decorative, must NOT intercept clicks */}
       {item?.backdrop && (
-        <div className="relative h-48 w-full overflow-hidden sm:h-64 md:h-80">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-[57px] z-0 h-48 overflow-hidden sm:h-64 md:h-80"
+        >
           <img
             src={item.backdrop}
             alt=""
             className="h-full w-full object-cover opacity-40"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
         </div>
       )}
 
       <main
         className={cn(
-          "mx-auto max-w-7xl px-4 sm:px-8",
-          item?.backdrop ? "-mt-32 pb-12" : "py-8"
+          "relative z-10 mx-auto max-w-7xl px-4 sm:px-8",
+          item?.backdrop ? "pt-32 pb-12 sm:pt-44 md:pt-56" : "py-8"
         )}
       >
         {!item ? (
