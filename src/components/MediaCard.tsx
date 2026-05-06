@@ -62,6 +62,7 @@ export const MediaCard = ({ item, onClick }: Props) => {
             sizes="(min-width: 1280px) 12rem, (min-width: 640px) 11rem, 9rem"
             alt={item.title}
             loading="lazy"
+            decoding="async"
             onLoad={() => setLoaded(true)}
             onError={() => {
               setErrored(true);
