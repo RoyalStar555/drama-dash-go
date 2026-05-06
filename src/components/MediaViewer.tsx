@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Maximize2, Minimize2, Sun, Moon } from "lucide-react";
+import { ArrowLeft, Maximize2, Minimize2, Sun, Moon, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HlsPlayer } from "@/components/HlsPlayer";
-import { MediaItem, PLACEHOLDER, getContentType, fetchTrailerKey } from "@/lib/api";
+import { MediaItem, PLACEHOLDER, getContentType, fetchTrailerKey, resolveHlsSrc } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-// Reliable HLS test stream — bypasses CORS / regional issues
-export const DEMO_HLS_SRC =
-  "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8";
+// Code-split hls.js bundle.
+const HlsPlayer = lazy(() =>
+  import("@/components/HlsPlayer").then((m) => ({ default: m.HlsPlayer }))
+);
 
 interface Props {
   item: MediaItem;
