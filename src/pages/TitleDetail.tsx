@@ -463,17 +463,19 @@ const TitleDetail = () => {
 
         {/* Smart Content Switcher — central MediaViewer (HLS player or webtoon reader) */}
         {item && viewerOpen && activeEp != null && (
-          <MediaViewer
-            item={item}
-            currentSelection={activeEp}
-            total={totalUnits}
-            visible={viewerVisible}
-            onClose={closeViewer}
-            onSelectionChange={(n) => {
-              setActiveEp(n);
-              markEpisodeWatched(item, n, totalUnits);
-            }}
-          />
+          <Suspense fallback={null}>
+            <MediaViewer
+              item={item}
+              currentSelection={activeEp}
+              total={totalUnits}
+              visible={viewerVisible}
+              onClose={closeViewer}
+              onSelectionChange={(n) => {
+                setActiveEp(n);
+                markEpisodeWatched(item, n, totalUnits);
+              }}
+            />
+          </Suspense>
         )}
 
         {related.length > 0 && (
