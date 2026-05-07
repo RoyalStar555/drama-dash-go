@@ -19,10 +19,16 @@ export const MediaRow = ({ title, items, loading, onSelect, id }: Props) => {
       <div className="flex gap-3 overflow-x-auto px-4 pb-4 sm:px-8 [scrollbar-width:thin]">
         {loading
           ? Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton
+              <div
                 key={i}
-                className="h-72 w-36 flex-shrink-0 rounded-md sm:w-44 md:w-48"
-              />
+                className="flex-shrink-0 w-36 sm:w-44 md:w-48 overflow-hidden rounded-xl ring-1 ring-border/60"
+              >
+                <Skeleton className="aspect-[2/3] w-full rounded-none" />
+                <div className="space-y-1.5 p-2.5">
+                  <Skeleton className="h-3.5 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              </div>
             ))
           : items.length === 0
             ? (
