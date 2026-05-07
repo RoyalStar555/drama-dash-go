@@ -113,33 +113,45 @@ export const SearchPalette = ({ onSelect, initialQuery = "", onQueryChange }: Pr
 
   return (
     <div ref={wrapRef} className="relative w-full sm:max-w-md">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
+      <form
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setDebounced(query.trim());
           setOpen(true);
-          setActive(0);
+          if (results.length > 0) pick(results[active]);
         }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={onKeyDown}
-        placeholder="Search movies, dramas, anime, manga, books…"
-        className="pl-9 pr-9"
-        aria-label="Search StoryHub"
-      />
-      {query && (
-        <button
-          type="button"
-          onClick={() => {
-            setQuery("");
-            setOpen(false);
+      >
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            setActive(0);
           }}
-          className="absolute right-1 top-1/2 flex h-11 w-11 min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Clear search"
-        >
-          <X className="pointer-events-none h-4 w-4" />
-        </button>
-      )}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          type="search"
+          enterKeyHint="search"
+          placeholder="Search movies, dramas, anime, manga, books…"
+          className="pl-9 pr-9"
+          aria-label="Search StoryHub"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setOpen(false);
+            }}
+            className="absolute right-1 top-1/2 flex h-11 w-11 min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Clear search"
+          >
+            <X className="pointer-events-none h-4 w-4" />
+          </button>
+        )}
+      </form>
 
       {showDropdown && (
         <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-border bg-popover/95 shadow-2xl backdrop-blur-md animate-fade-in">
