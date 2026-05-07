@@ -457,9 +457,8 @@ export async function fetchIndianMovies(
   // Strict lockdown for single-language regional rows: enforce Indian origin.
   if (isSingleLang) params.with_origin_country = "IN";
   const r = await tmdb<TmdbResult>("/discover/movie", params);
-  const allowed = lang.split("|").map((s) => s.trim()).filter(Boolean);
   const mapped = mapTmdb(r?.results, "movie", "movie", {
-    enforceLanguages: allowed,
+    enforceLanguages: allowedLangs,
   });
   return withFallback(mapped, "movie");
 }
