@@ -445,13 +445,18 @@ export async function fetchSecondary(
 export async function fetchIndianMovies(
   lang: string = "hi|ta|te|ml|kn|bn"
 ): Promise<MediaItem[]> {
-  const r = await tmdb<TmdbResult>("/discover/movie", {
+  const allowedLangs = lang.split("|").map((s) => s.trim()).filter(Boolean);
+  const isSingleLang = allowedLangs.length === 1;
+  const params: Record<string, string> = {
     with_original_language: lang,
     sort_by: "popularity.desc",
     region: "IN",
     "vote_count.gte": "20",
     include_adult: "false",
-  });
+  };
+  // Strict lockdown for single-language regional rows: enforce Indian origin.
+  if (isSingleLang) params.with_origin_country = "IN";
+  const r = await tmdb<TmdbResult>("/discover/movie", params);
   const allowed = lang.split("|").map((s) => s.trim()).filter(Boolean);
   const mapped = mapTmdb(r?.results, "movie", "movie", {
     enforceLanguages: allowed,
