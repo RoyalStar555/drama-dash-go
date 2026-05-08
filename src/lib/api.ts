@@ -154,10 +154,14 @@ const getTmdbKey = () =>
   (typeof window !== "undefined" && localStorage.getItem("tmdb_key")) ||
   DEFAULT_TMDB_KEY;
 
-// TMDB supports CORS directly from browsers, so no proxy is needed.
-// We keep a proxy fallback only if a direct call fails (network / region block).
-const CORS_PROXY = "https://corsproxy.io/?";
+// TMDB supports CORS directly from browsers in most environments. When the
+// deployed domain is blocked (CSP / privacy lists / region), we route through
+// AllOrigins which has no domain whitelist (corsproxy.io now 403s lovable.app).
+// Once a direct call fails, we remember it and skip future direct attempts to
+// avoid sequential per-request timeouts on every row.
+const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 const proxied = (url: string) => `${CORS_PROXY}${encodeURIComponent(url)}`;
+let TMDB_DIRECT_BLOCKED = false;
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP = "https://image.tmdb.org/t/p/w1280";
