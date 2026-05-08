@@ -19,6 +19,7 @@ export const MOCK_MOVIES: MediaItem[] = [
     overview:
       "Paul Atreides unites with the Fremen to wage war against House Harkonnen.",
     rating: 8.3,
+    originalLanguage: "en",
   },
   {
     id: "mock-movie-2",
@@ -30,6 +31,7 @@ export const MOCK_MOVIES: MediaItem[] = [
     overview:
       "The story of J. Robert Oppenheimer's role in the development of the atomic bomb.",
     rating: 8.1,
+    originalLanguage: "en",
   },
   {
     id: "mock-movie-3",
@@ -41,6 +43,7 @@ export const MOCK_MOVIES: MediaItem[] = [
     overview:
       "A team of explorers travels through a wormhole in space to ensure humanity's survival.",
     rating: 8.4,
+    originalLanguage: "en",
   },
   {
     id: "mock-movie-4",
@@ -52,17 +55,18 @@ export const MOCK_MOVIES: MediaItem[] = [
     overview:
       "Batman ventures into Gotham City's underworld to unmask the Riddler.",
     rating: 7.7,
+    originalLanguage: "en",
   },
   {
     id: "mock-movie-5",
     category: "movie",
     title: "Spider-Man: Across the Spider-Verse",
     poster: tmdbImg("/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg"),
-    backdrop: tmdbBackdrop("/4HodYYKEIsGOdinkGi2Ucfxm/lDsI.jpg"),
     year: "2023",
     overview:
       "Miles Morales catapults across the Multiverse, where he encounters a team of Spider-People.",
     rating: 8.6,
+    originalLanguage: "en",
   },
   {
     id: "mock-movie-6",
@@ -73,8 +77,141 @@ export const MOCK_MOVIES: MediaItem[] = [
     overview:
       "A middle-aged Chinese immigrant is swept up in an insane adventure across the multiverse.",
     rating: 8.0,
+    originalLanguage: "en",
   },
 ];
+
+// ---- Regional Indian mock pools --------------------------------------------
+// Used as language-correct fallbacks when TMDB is unreachable so Bollywood/
+// Tamil/Telugu rows never leak Hollywood content.
+export const MOCK_BOLLYWOOD: MediaItem[] = [
+  {
+    id: "mock-bolly-1", category: "movie", title: "3 Idiots",
+    poster: tmdbImg("/66A9MqXOyVFCssoloscw79z8Tew.jpg"),
+    year: "2009", rating: 8.4, originalLanguage: "hi",
+    overview: "Two friends search for their long-lost college buddy who inspired them to think creatively.",
+  },
+  {
+    id: "mock-bolly-2", category: "movie", title: "Dangal",
+    poster: tmdbImg("/cOEhWdcSm1ojIdb6CksCmF6lOQa.jpg"),
+    year: "2016", rating: 8.3, originalLanguage: "hi",
+    overview: "A former wrestler trains his daughters to become world-class wrestlers.",
+  },
+  {
+    id: "mock-bolly-3", category: "movie", title: "Lagaan",
+    poster: tmdbImg("/3ITyHN9fiHU2tXrTiXbW6QONpyF.jpg"),
+    year: "2001", rating: 8.1, originalLanguage: "hi",
+    overview: "Villagers stake their lives on a cricket match against their colonial rulers.",
+  },
+  {
+    id: "mock-bolly-4", category: "movie", title: "Gully Boy",
+    poster: tmdbImg("/2bYNuPzfzgvHUlk7kjnYQ9AMnmB.jpg"),
+    year: "2019", rating: 7.9, originalLanguage: "hi",
+    overview: "A street rapper from Mumbai's slums chases his dreams of hip-hop stardom.",
+  },
+  {
+    id: "mock-bolly-5", category: "movie", title: "Andhadhun",
+    poster: tmdbImg("/2hG6Vts2ufFijKOqB0kImsqmKu7.jpg"),
+    year: "2018", rating: 8.2, originalLanguage: "hi",
+    overview: "A blind pianist becomes entangled in a murder mystery.",
+  },
+  {
+    id: "mock-bolly-6", category: "movie", title: "Zindagi Na Milegi Dobara",
+    poster: tmdbImg("/52AfXWuXCHn3UjD17rBruA9f5qb.jpg"),
+    year: "2011", rating: 8.0, originalLanguage: "hi",
+    overview: "Three friends embark on a bachelor road trip across Spain that changes their lives.",
+  },
+];
+
+export const MOCK_TAMIL: MediaItem[] = [
+  {
+    id: "mock-tamil-1", category: "movie", title: "Vikram",
+    poster: tmdbImg("/qigfgT8B8LtXrN3NAhkYEoTaJlx.jpg"),
+    year: "2022", rating: 8.4, originalLanguage: "ta",
+    overview: "A special agent investigates a series of murders by a masked vigilante group.",
+  },
+  {
+    id: "mock-tamil-2", category: "movie", title: "Kaithi",
+    poster: tmdbImg("/2tBjzwpCk87R6P4hmcPwM4cz6Bi.jpg"),
+    year: "2019", rating: 8.5, originalLanguage: "ta",
+    overview: "An ex-convict races against time to deliver injured officers to safety.",
+  },
+  {
+    id: "mock-tamil-3", category: "movie", title: "Jai Bhim",
+    poster: tmdbImg("/7TpUcXgto5Z69e1cjoCdQ3HWnvE.jpg"),
+    year: "2021", rating: 8.7, originalLanguage: "ta",
+    overview: "A lawyer fights for justice for a tribal woman whose husband is wrongfully arrested.",
+  },
+  {
+    id: "mock-tamil-4", category: "movie", title: "Soorarai Pottru",
+    poster: tmdbImg("/zQNWQiEulCLrWDLNxPa8wSI6wpY.jpg"),
+    year: "2020", rating: 8.6, originalLanguage: "ta",
+    overview: "A man from a small village dreams of launching a low-cost airline.",
+  },
+  {
+    id: "mock-tamil-5", category: "movie", title: "Master",
+    poster: tmdbImg("/qzA87Wf4jnIhLcDqtHJlzKNcCcZ.jpg"),
+    year: "2021", rating: 7.4, originalLanguage: "ta",
+    overview: "An alcoholic professor is sent to a juvenile school where he confronts a ruthless gangster.",
+  },
+  {
+    id: "mock-tamil-6", category: "movie", title: "96",
+    poster: tmdbImg("/7Eq7mJKv5qYrEfgQYQEgL8cLQDH.jpg"),
+    year: "2018", rating: 8.5, originalLanguage: "ta",
+    overview: "Schoolmates reunite after 22 years and revisit their unfinished love story.",
+  },
+];
+
+export const MOCK_TELUGU: MediaItem[] = [
+  {
+    id: "mock-tel-1", category: "movie", title: "RRR",
+    poster: tmdbImg("/nEufeZlyAOLqO2brrs0yeF1lgXO.jpg"),
+    year: "2022", rating: 7.9, originalLanguage: "te",
+    overview: "Two revolutionaries fight against the British Raj in 1920s India.",
+  },
+  {
+    id: "mock-tel-2", category: "movie", title: "Baahubali: The Beginning",
+    poster: tmdbImg("/ssqr5BzcUlpoYTsjwSXkE8KRZGm.jpg"),
+    year: "2015", rating: 8.0, originalLanguage: "te",
+    overview: "An adventurous young man sets out to discover the truth about his lineage.",
+  },
+  {
+    id: "mock-tel-3", category: "movie", title: "Pushpa: The Rise",
+    poster: tmdbImg("/pf2ttO2gbARZHc3hFKfXdkbiCbt.jpg"),
+    year: "2021", rating: 7.6, originalLanguage: "te",
+    overview: "A coolie rises in the world of red sandalwood smuggling in the Seshachalam forests.",
+  },
+  {
+    id: "mock-tel-4", category: "movie", title: "Eega",
+    poster: tmdbImg("/qIv9Bv1XgQhAvw6ZnOwGFlRpr6r.jpg"),
+    year: "2012", rating: 7.7, originalLanguage: "te",
+    overview: "A murdered man is reincarnated as a housefly and seeks revenge on his killer.",
+  },
+  {
+    id: "mock-tel-5", category: "movie", title: "Arjun Reddy",
+    poster: tmdbImg("/fAiRD1zxJ0XSHZWXSc4aSXKcSDa.jpg"),
+    year: "2017", rating: 8.0, originalLanguage: "te",
+    overview: "A short-tempered surgeon spirals after losing the love of his life.",
+  },
+  {
+    id: "mock-tel-6", category: "movie", title: "Magadheera",
+    poster: tmdbImg("/4MpcU2pJqSsMpVZG3bI3ZspGhVQ.jpg"),
+    year: "2009", rating: 7.5, originalLanguage: "te",
+    overview: "A reincarnated warrior must protect his beloved across two lifetimes.",
+  },
+];
+
+export const MOCK_INDIAN_MIX: MediaItem[] = [
+  ...MOCK_BOLLYWOOD.slice(0, 2),
+  ...MOCK_TAMIL.slice(0, 2),
+  ...MOCK_TELUGU.slice(0, 2),
+];
+
+export const MOCK_INDIAN_BY_LANG: Record<string, MediaItem[]> = {
+  hi: MOCK_BOLLYWOOD,
+  ta: MOCK_TAMIL,
+  te: MOCK_TELUGU,
+};
 
 export const MOCK_DRAMAS: MediaItem[] = [
   {
