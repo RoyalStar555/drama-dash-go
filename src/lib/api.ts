@@ -487,13 +487,23 @@ export async function fetchIndianMovies(
     "vote_count.gte": "20",
     include_adult: "false",
   };
-  // Strict lockdown for single-language regional rows: enforce Indian origin.
   if (isSingleLang) params.with_origin_country = "IN";
   const r = await tmdb<TmdbResult>("/discover/movie", params);
   const mapped = mapTmdb(r?.results, "movie", "movie", {
     enforceLanguages: allowedLangs,
   });
-  return withFallback(mapped, "movie");
+  // If TMDB returned real regional results, use them as-is.
+  if (mapped.length >= 5) return mapped;
+
+  // Otherwise, pick a language-correct mock pool — never the global Hollywood
+  // pool — so Bollywood/Tamil/Telugu rows never leak en-language content.
+  const regionalMock = isSingleLang
+    ? (MOCK_INDIAN_BY_LANG[allowedLangs[0]] || [])
+    : MOCK_INDIAN_MIX;
+
+  const seen = new Set(mapped.map((i) => i.title.toLowerCase()));
+  const extras = regionalMock.filter((m) => !seen.has(m.title.toLowerCase()));
+  return [...mapped, ...extras];
 }
 
 export async function searchAll(query: string): Promise<MediaItem[]> {
