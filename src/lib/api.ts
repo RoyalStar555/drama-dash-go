@@ -180,28 +180,55 @@ export class RateLimitError extends Error {
   }
 }
 
-async function safeJson<T>(url: string): Promise<T | null> {
+export class NetworkError extends Error {
+  constructor(url: string, public cause?: unknown) {
+    super(`Network/proxy error: ${url}`);
+    this.name = "NetworkError";
+  }
+}
+
+// Returns parsed JSON, or a typed error sentinel. Callers can distinguish
+// "endpoint returned null/empty" from "fetch blocked / proxy 403" by checking
+// `result instanceof NetworkError`.
+async function safeJson<T>(url: string): Promise<T | NetworkError | null> {
   try {
     const res = await fetch(url);
     if (res.status === 429) throw new RateLimitError(url);
+    if (res.status === 403 || res.status >= 500) return new NetworkError(url);
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch (err) {
     if (err instanceof RateLimitError) throw err;
-    return null;
+    return new NetworkError(url, err);
   }
 }
 
+const isData = <T,>(v: T | NetworkError | null): v is T =>
+  v !== null && !(v instanceof NetworkError);
+
 // ---- TMDB (Movies + Drama/TV) ----------------------------------------------
-async function tmdb<T>(path: string, params: Record<string, string> = {}) {
+async function tmdb<T>(
+  path: string,
+  params: Record<string, string> = {}
+): Promise<T | NetworkError | null> {
   const qs = new URLSearchParams({
     api_key: getTmdbKey(),
     language: "en-US",
     ...params,
   });
   const url = `https://api.themoviedb.org/3${path}?${qs.toString()}`;
-  const direct = await safeJson<T>(url);
-  if (direct) return direct;
+  if (!TMDB_DIRECT_BLOCKED) {
+    const direct = await safeJson<T>(url);
+    if (isData(direct)) return direct;
+    if (direct instanceof NetworkError) {
+      // Mark direct as blocked for the rest of the session — every subsequent
+      // request goes straight to the proxy without burning another timeout.
+      TMDB_DIRECT_BLOCKED = true;
+    } else {
+      // Genuine null (e.g., 404) — don't fall through to the proxy.
+      return null;
+    }
+  }
   return safeJson<T>(proxied(url));
 }
 
