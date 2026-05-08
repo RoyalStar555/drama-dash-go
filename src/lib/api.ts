@@ -187,30 +187,34 @@ export class NetworkError extends Error {
   }
 }
 
-// Returns parsed JSON, or a typed error sentinel. Callers can distinguish
-// "endpoint returned null/empty" from "fetch blocked / proxy 403" by checking
-// `result instanceof NetworkError`.
-async function safeJson<T>(url: string): Promise<T | NetworkError | null> {
+// Internal: track whether the most recent tmdb()/safeJson call hit a
+// network/proxy error (vs a legitimate empty/null response).
+let LAST_NETWORK_ERROR = false;
+export const wasNetworkError = (): boolean => LAST_NETWORK_ERROR;
+
+async function safeJson<T>(url: string): Promise<T | null> {
+  LAST_NETWORK_ERROR = false;
   try {
     const res = await fetch(url);
     if (res.status === 429) throw new RateLimitError(url);
-    if (res.status === 403 || res.status >= 500) return new NetworkError(url);
+    if (res.status === 403 || res.status >= 500) {
+      LAST_NETWORK_ERROR = true;
+      return null;
+    }
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch (err) {
     if (err instanceof RateLimitError) throw err;
-    return new NetworkError(url, err);
+    LAST_NETWORK_ERROR = true;
+    return null;
   }
 }
-
-const isData = <T,>(v: T | NetworkError | null): v is T =>
-  v !== null && !(v instanceof NetworkError);
 
 // ---- TMDB (Movies + Drama/TV) ----------------------------------------------
 async function tmdb<T>(
   path: string,
   params: Record<string, string> = {}
-): Promise<T | NetworkError | null> {
+): Promise<T | null> {
   const qs = new URLSearchParams({
     api_key: getTmdbKey(),
     language: "en-US",
@@ -219,14 +223,12 @@ async function tmdb<T>(
   const url = `https://api.themoviedb.org/3${path}?${qs.toString()}`;
   if (!TMDB_DIRECT_BLOCKED) {
     const direct = await safeJson<T>(url);
-    if (isData(direct)) return direct;
-    if (direct instanceof NetworkError) {
-      // Mark direct as blocked for the rest of the session — every subsequent
-      // request goes straight to the proxy without burning another timeout.
+    if (direct) return direct;
+    if (LAST_NETWORK_ERROR) {
+      // Mark direct as blocked for the rest of the session.
       TMDB_DIRECT_BLOCKED = true;
     } else {
-      // Genuine null (e.g., 404) — don't fall through to the proxy.
-      return null;
+      return null; // genuine empty
     }
   }
   return safeJson<T>(proxied(url));
