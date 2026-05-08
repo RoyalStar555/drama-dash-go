@@ -154,10 +154,14 @@ const getTmdbKey = () =>
   (typeof window !== "undefined" && localStorage.getItem("tmdb_key")) ||
   DEFAULT_TMDB_KEY;
 
-// TMDB supports CORS directly from browsers, so no proxy is needed.
-// We keep a proxy fallback only if a direct call fails (network / region block).
-const CORS_PROXY = "https://corsproxy.io/?";
+// TMDB supports CORS directly from browsers in most environments. When the
+// deployed domain is blocked (CSP / privacy lists / region), we route through
+// AllOrigins which has no domain whitelist (corsproxy.io now 403s lovable.app).
+// Once a direct call fails, we remember it and skip future direct attempts to
+// avoid sequential per-request timeouts on every row.
+const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 const proxied = (url: string) => `${CORS_PROXY}${encodeURIComponent(url)}`;
+let TMDB_DIRECT_BLOCKED = false;
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP = "https://image.tmdb.org/t/p/w1280";
@@ -176,28 +180,57 @@ export class RateLimitError extends Error {
   }
 }
 
+export class NetworkError extends Error {
+  constructor(url: string, public cause?: unknown) {
+    super(`Network/proxy error: ${url}`);
+    this.name = "NetworkError";
+  }
+}
+
+// Internal: track whether the most recent tmdb()/safeJson call hit a
+// network/proxy error (vs a legitimate empty/null response).
+let LAST_NETWORK_ERROR = false;
+export const wasNetworkError = (): boolean => LAST_NETWORK_ERROR;
+
 async function safeJson<T>(url: string): Promise<T | null> {
+  LAST_NETWORK_ERROR = false;
   try {
     const res = await fetch(url);
     if (res.status === 429) throw new RateLimitError(url);
+    if (res.status === 403 || res.status >= 500) {
+      LAST_NETWORK_ERROR = true;
+      return null;
+    }
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch (err) {
     if (err instanceof RateLimitError) throw err;
+    LAST_NETWORK_ERROR = true;
     return null;
   }
 }
 
 // ---- TMDB (Movies + Drama/TV) ----------------------------------------------
-async function tmdb<T>(path: string, params: Record<string, string> = {}) {
+async function tmdb<T>(
+  path: string,
+  params: Record<string, string> = {}
+): Promise<T | null> {
   const qs = new URLSearchParams({
     api_key: getTmdbKey(),
     language: "en-US",
     ...params,
   });
   const url = `https://api.themoviedb.org/3${path}?${qs.toString()}`;
-  const direct = await safeJson<T>(url);
-  if (direct) return direct;
+  if (!TMDB_DIRECT_BLOCKED) {
+    const direct = await safeJson<T>(url);
+    if (direct) return direct;
+    if (LAST_NETWORK_ERROR) {
+      // Mark direct as blocked for the rest of the session.
+      TMDB_DIRECT_BLOCKED = true;
+    } else {
+      return null; // genuine empty
+    }
+  }
   return safeJson<T>(proxied(url));
 }
 
@@ -360,7 +393,7 @@ function mapOL(d: OLResp["docs"] = []): MediaItem[] {
 }
 
 // ---- Public API -------------------------------------------------------------
-import { MOCK_BY_CATEGORY } from "./mockData";
+import { MOCK_BY_CATEGORY, MOCK_INDIAN_BY_LANG, MOCK_INDIAN_MIX } from "./mockData";
 
 // Always merge mock items so categories never appear empty.
 function withFallback(items: MediaItem[], category: MediaCategory): MediaItem[] {
@@ -454,13 +487,23 @@ export async function fetchIndianMovies(
     "vote_count.gte": "20",
     include_adult: "false",
   };
-  // Strict lockdown for single-language regional rows: enforce Indian origin.
   if (isSingleLang) params.with_origin_country = "IN";
   const r = await tmdb<TmdbResult>("/discover/movie", params);
   const mapped = mapTmdb(r?.results, "movie", "movie", {
     enforceLanguages: allowedLangs,
   });
-  return withFallback(mapped, "movie");
+  // If TMDB returned real regional results, use them as-is.
+  if (mapped.length >= 5) return mapped;
+
+  // Otherwise, pick a language-correct mock pool — never the global Hollywood
+  // pool — so Bollywood/Tamil/Telugu rows never leak en-language content.
+  const regionalMock = isSingleLang
+    ? (MOCK_INDIAN_BY_LANG[allowedLangs[0]] || [])
+    : MOCK_INDIAN_MIX;
+
+  const seen = new Set(mapped.map((i) => i.title.toLowerCase()));
+  const extras = regionalMock.filter((m) => !seen.has(m.title.toLowerCase()));
+  return [...mapped, ...extras];
 }
 
 export async function searchAll(query: string): Promise<MediaItem[]> {
