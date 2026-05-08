@@ -393,7 +393,7 @@ function mapOL(d: OLResp["docs"] = []): MediaItem[] {
 }
 
 // ---- Public API -------------------------------------------------------------
-import { MOCK_BY_CATEGORY } from "./mockData";
+import { MOCK_BY_CATEGORY, MOCK_INDIAN_BY_LANG, MOCK_INDIAN_MIX } from "./mockData";
 
 // Always merge mock items so categories never appear empty.
 function withFallback(items: MediaItem[], category: MediaCategory): MediaItem[] {
